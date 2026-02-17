@@ -19,5 +19,23 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: ./backend
+    container_name: infernonet_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-infernonet}
+      DB_USER: ${POSTGRES_USER:-infernonet}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-infernonet_secret}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

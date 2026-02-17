@@ -4,30 +4,27 @@ Real-time collaboration platform connecting firefighters, emergency services, an
 
 **Supervisor:** Prof. Ioanna Dionysiou, dionysiou.i@unic.ac.cy
 
-## Database & Docker
-
-### Requirements
+## Requirements
 
 - Docker and Docker Compose
 
-### Run PostgreSQL and apply migrations
+## Run (PostgreSQL + Backend)
 
 ```bash
 cp .env.example .env
 # Edit .env if you need custom DB credentials
 
-docker compose up -d postgres
-docker compose run --rm migrate
+make run
+# or: docker compose up -d --build
 ```
 
-Or start everything (Postgres will start first, then migrations run once):
+- **PostgreSQL** — `localhost:5432`
+- **Backend (FastAPI)** — http://localhost:8000
+- **Swagger UI** — http://localhost:8000/docs
+- **ReDoc** — http://localhost:8000/redoc
+- **OpenAPI JSON** — http://localhost:8000/openapi.json
 
-```bash
-docker compose up -d
-```
-
-- **PostgreSQL** is available at `localhost:5432` (or `POSTGRES_PORT` from `.env`).
-- **Migrations** are in `migrations/` (golang-migrate format: `*_name.up.sql` / `*_name.down.sql`).
+Reset DB and restart: `make run-clean`
 
 ### Connection string
 
@@ -35,9 +32,7 @@ docker compose up -d
 postgres://infernonet:infernonet_secret@localhost:5432/infernonet?sslmode=disable
 ```
 
-(Use values from your `.env` if you changed them.)
-
-### Schema overview
+## Schema overview
 
 | Table | Purpose |
 |-------|---------|
@@ -50,3 +45,5 @@ postgres://infernonet:infernonet_secret@localhost:5432/infernonet?sslmode=disabl
 | `channels` / `channel_members` / `messages` | Team/incident chat |
 | `user_locations` | Live location for mapping |
 | `incident_updates` | Incident timeline / status updates |
+
+Migrations run automatically when the Postgres container is first created (`migrations/` → `/docker-entrypoint-initdb.d`).
