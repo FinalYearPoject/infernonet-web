@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status
-from app.database import get_connection, return_connection
+
+from app.core.database import get_connection, return_connection
 
 router = APIRouter()
 

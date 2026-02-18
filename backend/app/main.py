@@ -1,6 +1,17 @@
 from fastapi import FastAPI
 
-from app.api import health, incidents
+from app.api.routes import (
+    health,
+    incidents,
+    incident_updates,
+    organizations,
+    users,
+    teams,
+    equipment,
+    alerts,
+    channels,
+    user_locations,
+)
 
 app = FastAPI(
     title="InfernoNet API",
@@ -12,4 +23,12 @@ app = FastAPI(
 )
 
 app.include_router(health.router, tags=["Health"])
+app.include_router(organizations.router, prefix="/api", tags=["Organizations"])
+app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(incidents.router, prefix="/api", tags=["Incidents"])
+app.include_router(incident_updates.router, prefix="/api", tags=["Incident updates"])
+app.include_router(teams.router, prefix="/api", tags=["Teams"])
+app.include_router(equipment.router, prefix="/api", tags=["Equipment"])
+app.include_router(alerts.router, prefix="/api", tags=["Alerts"])
+app.include_router(channels.router, prefix="/api", tags=["Channels"])
+app.include_router(user_locations.router, prefix="/api", tags=["User locations"])

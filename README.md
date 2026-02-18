@@ -26,6 +26,33 @@ make run
 
 Reset DB and restart: `make run-clean`
 
+### API endpoints (Swagger: `/docs`)
+
+| Resource | Endpoints |
+|----------|-----------|
+| **Health** | `GET /health` |
+| **Organizations** | `GET/POST /api/organizations`, `GET /api/organizations/{id}` |
+| **Users** | `GET/POST /api/users`, `GET /api/users/{id}` (roles: firefighter, coordinator, civilian) |
+| **Incidents** | `GET/POST/PATCH /api/incidents`, `GET /api/incidents/{id}` |
+| **Incident updates** | `GET/POST /api/incidents/{id}/updates` (timeline) |
+| **Teams** | `GET/POST/PATCH /api/teams`, `GET /api/teams/{id}`, `GET/POST/DELETE .../members` |
+| **Equipment** | `GET/POST/PATCH /api/equipment`, `GET /api/equipment/{id}` |
+| **Alerts** | `GET/POST /api/alerts`, `GET /api/alerts/{id}` |
+| **Channels** | `GET/POST /api/channels`, `GET /api/channels/{id}`, `POST .../members`, `GET/POST .../messages` |
+| **User locations** | `GET /api/user-locations`, `PUT /api/user-locations`, `GET /api/users/{id}/location` (live map) |
+
+### Backend structure
+
+```
+backend/
+  app/
+    main.py              # FastAPI app, router registration
+    core/                # Config, DB pool, security (password hashing)
+    api/routes/          # Health, organizations, users, incidents, teams, equipment, alerts, channels, user_locations
+    services/            # Business logic & DB access per resource
+    schemas/             # Pydantic request/response models
+```
+
 ### Connection string
 
 ```

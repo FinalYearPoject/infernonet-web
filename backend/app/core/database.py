@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import pool
-from config import Config
+
+from app.core.config import Config
 
 _connection_pool = None
 
