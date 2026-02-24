@@ -1,0 +1,424 @@
+{
+  "info": {
+    "name": "InfernoNet API",
+    "description": "Smart communication for fire emergencies. Backend API for testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "org_id", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "incident_id", "value": "" },
+    { "key": "team_id", "value": "" },
+    { "key": "equipment_id", "value": "" },
+    { "key": "alert_id", "value": "" },
+    { "key": "channel_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        {
+          "name": "List organizations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/organizations?limit=100"
+          }
+        },
+        {
+          "name": "Create organization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Central Fire Department\",\n  \"type\": \"fire_department\",\n  \"contact_phone\": \"+1234567890\",\n  \"address\": \"123 Main St\"\n}"
+            },
+            "url": "{{base_url}}/api/organizations"
+          }
+        },
+        {
+          "name": "Get organization by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/organizations/{{org_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/users?limit=100"
+          }
+        },
+        {
+          "name": "Create user (register)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"firefighter@example.com\",\n  \"password\": \"securepass123\",\n  \"full_name\": \"John Doe\",\n  \"role\": \"firefighter\",\n  \"phone\": \"+1234567890\",\n  \"organization_id\": \"{{org_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/users"
+          }
+        },
+        {
+          "name": "Get user by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/users/{{user_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Incidents",
+      "item": [
+        {
+          "name": "List incidents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/incidents?limit=50"
+          }
+        },
+        {
+          "name": "Create incident",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Forest fire near Highway 5\",\n  \"description\": \"Large fire spreading east\",\n  \"severity\": \"high\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437,\n  \"address\": \"Highway 5, mile 42\",\n  \"created_by\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/incidents"
+          }
+        },
+        {
+          "name": "Get incident by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/incidents/{{incident_id}}"
+          }
+        },
+        {
+          "name": "Update incident",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"contained\",\n  \"severity\": \"medium\"\n}"
+            },
+            "url": "{{base_url}}/api/incidents/{{incident_id}}"
+          }
+        },
+        {
+          "name": "List incident updates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/incidents/{{incident_id}}/updates"
+          }
+        },
+        {
+          "name": "Create incident update",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Fire contained on north flank\",\n  \"user_id\": \"{{user_id}}\",\n  \"status_before\": \"active\",\n  \"status_after\": \"contained\"\n}"
+            },
+            "url": "{{base_url}}/api/incidents/{{incident_id}}/updates"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "List teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/teams?limit=100"
+          }
+        },
+        {
+          "name": "Create team",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alpha Team\",\n  \"organization_id\": \"{{org_id}}\",\n  \"incident_id\": \"{{incident_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/teams"
+          }
+        },
+        {
+          "name": "Get team by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/teams/{{team_id}}"
+          }
+        },
+        {
+          "name": "Update team",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"incident_id\": \"{{incident_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/teams/{{team_id}}"
+          }
+        },
+        {
+          "name": "List team members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/teams/{{team_id}}/members"
+          }
+        },
+        {
+          "name": "Add team member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"role_in_team\": \"member\"\n}"
+            },
+            "url": "{{base_url}}/api/teams/{{team_id}}/members"
+          }
+        },
+        {
+          "name": "Remove team member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/teams/{{team_id}}/members/{{user_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment",
+      "item": [
+        {
+          "name": "List equipment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/equipment?limit=100"
+          }
+        },
+        {
+          "name": "Create equipment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pump Truck 1\",\n  \"type\": \"vehicle\",\n  \"status\": \"available\",\n  \"organization_id\": \"{{org_id}}\",\n  \"latitude\": 34.05,\n  \"longitude\": -118.24,\n  \"metadata\": {}\n}"
+            },
+            "url": "{{base_url}}/api/equipment"
+          }
+        },
+        {
+          "name": "Get equipment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/equipment/{{equipment_id}}"
+          }
+        },
+        {
+          "name": "Update equipment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_use\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"latitude\": 34.06,\n  \"longitude\": -118.25\n}"
+            },
+            "url": "{{base_url}}/api/equipment/{{equipment_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "List alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/alerts?limit=100"
+          }
+        },
+        {
+          "name": "Create alert",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"incident_id\": \"{{incident_id}}\",\n  \"title\": \"Evacuation order\",\n  \"message\": \"Residents in zone B must evacuate immediately\",\n  \"severity\": \"critical\",\n  \"created_by\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/alerts"
+          }
+        },
+        {
+          "name": "Get alert by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/alerts/{{alert_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Channels",
+      "item": [
+        {
+          "name": "List channels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/channels?limit=100"
+          }
+        },
+        {
+          "name": "Create channel (incident)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Incident #1 comms\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"is_public\": false,\n  \"created_by\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/channels"
+          }
+        },
+        {
+          "name": "Create channel (team)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alpha Team chat\",\n  \"team_id\": \"{{team_id}}\",\n  \"is_public\": false\n}"
+            },
+            "url": "{{base_url}}/api/channels"
+          }
+        },
+        {
+          "name": "Get channel by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/channels/{{channel_id}}"
+          }
+        },
+        {
+          "name": "Add channel member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/channels/{{channel_id}}/members"
+          }
+        },
+        {
+          "name": "List channel messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/channels/{{channel_id}}/messages?limit=100"
+          }
+        },
+        {
+          "name": "Send message",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Team moving to north sector\",\n  \"user_id\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/channels/{{channel_id}}/messages"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User locations",
+      "item": [
+        {
+          "name": "List user locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/user-locations?limit=500"
+          }
+        },
+        {
+          "name": "Update user location (upsert)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437\n}"
+            },
+            "url": "{{base_url}}/api/user-locations"
+          }
+        },
+        {
+          "name": "Get user location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/users/{{user_id}}/location"
+          }
+        }
+      ]
+    }
+  ]
+}
