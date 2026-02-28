@@ -1,25 +1,31 @@
 {
   "info": {
     "name": "InfernoNet API",
-    "description": "Smart communication for fire emergencies. Backend API for testing.",
+    "description": "Full end-to-end test suite. Run with Collection Runner in the order shown. IDs are auto-saved to environment variables after each Create request.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8000" },
-    { "key": "org_id", "value": "" },
-    { "key": "user_id", "value": "" },
-    { "key": "incident_id", "value": "" },
-    { "key": "team_id", "value": "" },
-    { "key": "equipment_id", "value": "" },
-    { "key": "alert_id", "value": "" },
-    { "key": "channel_id", "value": "" }
+    { "key": "base_url", "value": "http://localhost:8000" }
   ],
   "item": [
     {
-      "name": "Health",
+      "name": "01 Health",
       "item": [
         {
           "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Service healthy', () => pm.expect(b.status).to.eql('healthy'));",
+                  "pm.test('Database ok', () => pm.expect(b.database).to.eql('ok'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -29,10 +35,51 @@
       ]
     },
     {
-      "name": "Organizations",
+      "name": "02 Organizations",
       "item": [
         {
+          "name": "Create organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Name matches', () => pm.expect(b.name).to.eql('Central Fire Department'));",
+                  "pm.test('Type matches', () => pm.expect(b.type).to.eql('fire_department'));",
+                  "pm.environment.set('org_id', b.id);",
+                  "console.log('org_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Central Fire Department\",\n  \"type\": \"fire_department\",\n  \"contact_phone\": \"+1234567890\",\n  \"address\": \"123 Main St, Los Angeles\"\n}"
+            },
+            "url": "{{base_url}}/api/organizations"
+          }
+        },
+        {
           "name": "List organizations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('organizations is array', () => pm.expect(b.organizations).to.be.an('array'));",
+                  "pm.test('At least 1 org', () => pm.expect(b.organizations.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -40,19 +87,20 @@
           }
         },
         {
-          "name": "Create organization",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Central Fire Department\",\n  \"type\": \"fire_department\",\n  \"contact_phone\": \"+1234567890\",\n  \"address\": \"123 Main St\"\n}"
-            },
-            "url": "{{base_url}}/api/organizations"
-          }
-        },
-        {
           "name": "Get organization by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('org_id')));",
+                  "pm.test('Has name', () => pm.expect(b.name).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -62,10 +110,103 @@
       ]
     },
     {
-      "name": "Users",
+      "name": "03 Users",
       "item": [
         {
+          "name": "Create user — coordinator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Email matches', () => pm.expect(b.email).to.eql('coordinator@infernonet.com'));",
+                  "pm.test('Role is coordinator', () => pm.expect(b.role).to.eql('coordinator'));",
+                  "pm.test('No password_hash exposed', () => pm.expect(b).to.not.have.property('password_hash'));",
+                  "pm.environment.set('coordinator_id', b.id);",
+                  "console.log('coordinator_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"coordinator@infernonet.com\",\n  \"password\": \"pass1234\",\n  \"full_name\": \"Alice Smith\",\n  \"role\": \"coordinator\",\n  \"phone\": \"+1555000001\",\n  \"organization_id\": \"{{org_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/users"
+          }
+        },
+        {
+          "name": "Create user — firefighter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Role is firefighter', () => pm.expect(b.role).to.eql('firefighter'));",
+                  "pm.environment.set('user_id', b.id);",
+                  "console.log('user_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"firefighter@infernonet.com\",\n  \"password\": \"pass1234\",\n  \"full_name\": \"John Doe\",\n  \"role\": \"firefighter\",\n  \"phone\": \"+1555000002\",\n  \"organization_id\": \"{{org_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/users"
+          }
+        },
+        {
+          "name": "Create user — duplicate email (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 on duplicate email', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('detail field present', () => pm.expect(b.detail).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"firefighter@infernonet.com\",\n  \"password\": \"otherpass\",\n  \"full_name\": \"Duplicate User\",\n  \"role\": \"civilian\"\n}"
+            },
+            "url": "{{base_url}}/api/users"
+          }
+        },
+        {
           "name": "List users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('users is array', () => pm.expect(b.users).to.be.an('array'));",
+                  "pm.test('At least 2 users', () => pm.expect(b.users.length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -73,32 +214,118 @@
           }
         },
         {
-          "name": "Create user (register)",
+          "name": "List users — filter by role firefighter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All roles are firefighter', () => {",
+                  "  b.users.forEach(u => pm.expect(u.role).to.eql('firefighter'));",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"firefighter@example.com\",\n  \"password\": \"securepass123\",\n  \"full_name\": \"John Doe\",\n  \"role\": \"firefighter\",\n  \"phone\": \"+1234567890\",\n  \"organization_id\": \"{{org_id}}\"\n}"
-            },
-            "url": "{{base_url}}/api/users"
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/users?role=firefighter"
           }
         },
         {
           "name": "Get user by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('user_id')));",
+                  "pm.test('Has email', () => pm.expect(b.email).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{base_url}}/api/users/{{user_id}}"
           }
+        },
+        {
+          "name": "Get user — not found (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/users/00000000-0000-0000-0000-000000000000"
+          }
         }
       ]
     },
     {
-      "name": "Incidents",
+      "name": "04 Incidents",
       "item": [
         {
+          "name": "Create incident",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Status is active', () => pm.expect(b.status).to.eql('active'));",
+                  "pm.test('Severity is high', () => pm.expect(b.severity).to.eql('high'));",
+                  "pm.test('Has coordinates', () => {",
+                  "  pm.expect(b.latitude).to.be.a('number');",
+                  "  pm.expect(b.longitude).to.be.a('number');",
+                  "});",
+                  "pm.environment.set('incident_id', b.id);",
+                  "console.log('incident_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Forest fire near Highway 5\",\n  \"description\": \"Large wildfire spreading east, threatening residential areas\",\n  \"severity\": \"high\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437,\n  \"address\": \"Highway 5, mile 42, Los Angeles County\",\n  \"created_by\": \"{{coordinator_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/incidents"
+          }
+        },
+        {
           "name": "List incidents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('incidents is array', () => pm.expect(b.incidents).to.be.an('array'));",
+                  "pm.test('At least 1 incident', () => pm.expect(b.incidents.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -106,19 +333,42 @@
           }
         },
         {
-          "name": "Create incident",
+          "name": "List incidents — filter active",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('All are active', () => {",
+                  "  b.incidents.forEach(i => pm.expect(i.status).to.eql('active'));",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Forest fire near Highway 5\",\n  \"description\": \"Large fire spreading east\",\n  \"severity\": \"high\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437,\n  \"address\": \"Highway 5, mile 42\",\n  \"created_by\": \"{{user_id}}\"\n}"
-            },
-            "url": "{{base_url}}/api/incidents"
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/incidents?status_filter=active"
           }
         },
         {
           "name": "Get incident by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('incident_id')));",
+                  "pm.test('Has description', () => pm.expect(b.description).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -126,7 +376,20 @@
           }
         },
         {
-          "name": "Update incident",
+          "name": "Update incident — status contained",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Status updated', () => pm.expect(b.status).to.eql('contained'));",
+                  "pm.test('Severity updated', () => pm.expect(b.severity).to.eql('medium'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -138,40 +401,76 @@
           }
         },
         {
-          "name": "List incident updates",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/api/incidents/{{incident_id}}/updates"
-          }
-        },
-        {
           "name": "Create incident update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('incident_id matches', () => pm.expect(b.incident_id).to.eql(pm.environment.get('incident_id')));",
+                  "pm.test('status_before is active', () => pm.expect(b.status_before).to.eql('active'));",
+                  "pm.test('status_after is contained', () => pm.expect(b.status_after).to.eql('contained'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"content\": \"Fire contained on north flank\",\n  \"user_id\": \"{{user_id}}\",\n  \"status_before\": \"active\",\n  \"status_after\": \"contained\"\n}"
+              "raw": "{\n  \"content\": \"Fire contained on north flank. Water resources deployed.\",\n  \"user_id\": \"{{coordinator_id}}\",\n  \"status_before\": \"active\",\n  \"status_after\": \"contained\"\n}"
             },
+            "url": "{{base_url}}/api/incidents/{{incident_id}}/updates"
+          }
+        },
+        {
+          "name": "List incident updates",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('updates is array', () => pm.expect(b.updates).to.be.an('array'));",
+                  "pm.test('At least 1 update', () => pm.expect(b.updates.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
             "url": "{{base_url}}/api/incidents/{{incident_id}}/updates"
           }
         }
       ]
     },
     {
-      "name": "Teams",
+      "name": "05 Teams",
       "item": [
         {
-          "name": "List teams",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/api/teams?limit=100"
-          }
-        },
-        {
           "name": "Create team",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Name matches', () => pm.expect(b.name).to.eql('Alpha Team'));",
+                  "pm.test('org_id matches', () => pm.expect(b.organization_id).to.eql(pm.environment.get('org_id')));",
+                  "pm.environment.set('team_id', b.id);",
+                  "console.log('team_id =', b.id);"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -183,7 +482,39 @@
           }
         },
         {
+          "name": "List teams",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('teams is array', () => pm.expect(b.teams).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/teams?limit=100"
+          }
+        },
+        {
           "name": "Get team by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('team_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -191,52 +522,123 @@
           }
         },
         {
-          "name": "Update team",
-          "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"incident_id\": \"{{incident_id}}\"\n}"
-            },
-            "url": "{{base_url}}/api/teams/{{team_id}}"
-          }
-        },
-        {
-          "name": "List team members",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/api/teams/{{team_id}}/members"
-          }
-        },
-        {
-          "name": "Add team member",
+          "name": "Add team member — firefighter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('user_id matches', () => pm.expect(b.user_id).to.eql(pm.environment.get('user_id')));",
+                  "pm.test('role_in_team is leader', () => pm.expect(b.role_in_team).to.eql('leader'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"role_in_team\": \"member\"\n}"
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"role_in_team\": \"leader\"\n}"
             },
             "url": "{{base_url}}/api/teams/{{team_id}}/members"
           }
         },
         {
-          "name": "Remove team member",
+          "name": "List team members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('members is array', () => pm.expect(b.members).to.be.an('array'));",
+                  "pm.test('At least 1 member', () => pm.expect(b.members.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "DELETE",
+            "method": "GET",
             "header": [],
-            "url": "{{base_url}}/api/teams/{{team_id}}/members/{{user_id}}"
+            "url": "{{base_url}}/api/teams/{{team_id}}/members"
           }
         }
       ]
     },
     {
-      "name": "Equipment",
+      "name": "06 Equipment",
       "item": [
         {
+          "name": "Create equipment — vehicle",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Status is available', () => pm.expect(b.status).to.eql('available'));",
+                  "pm.test('Has metadata', () => pm.expect(b.metadata).to.be.an('object'));",
+                  "pm.environment.set('equipment_id', b.id);",
+                  "console.log('equipment_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pump Truck 1\",\n  \"type\": \"vehicle\",\n  \"status\": \"available\",\n  \"organization_id\": \"{{org_id}}\",\n  \"latitude\": 34.0500,\n  \"longitude\": -118.2400,\n  \"metadata\": {\"plate\": \"FIRE-01\", \"capacity_liters\": 5000}\n}"
+            },
+            "url": "{{base_url}}/api/equipment"
+          }
+        },
+        {
+          "name": "Create equipment — drone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Type is drone', () => pm.expect(b.type).to.eql('drone'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Scout Drone Alpha\",\n  \"type\": \"drone\",\n  \"status\": \"available\",\n  \"organization_id\": \"{{org_id}}\",\n  \"metadata\": {\"model\": \"DJI-M300\", \"max_flight_time_min\": 45}\n}"
+            },
+            "url": "{{base_url}}/api/equipment"
+          }
+        },
+        {
           "name": "List equipment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('equipment is array', () => pm.expect(b.equipment).to.be.an('array'));",
+                  "pm.test('At least 2 items', () => pm.expect(b.equipment.length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -244,19 +646,19 @@
           }
         },
         {
-          "name": "Create equipment",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Pump Truck 1\",\n  \"type\": \"vehicle\",\n  \"status\": \"available\",\n  \"organization_id\": \"{{org_id}}\",\n  \"latitude\": 34.05,\n  \"longitude\": -118.24,\n  \"metadata\": {}\n}"
-            },
-            "url": "{{base_url}}/api/equipment"
-          }
-        },
-        {
           "name": "Get equipment by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('equipment_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -264,13 +666,26 @@
           }
         },
         {
-          "name": "Update equipment",
+          "name": "Update equipment — assign to incident",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Status is in_use', () => pm.expect(b.status).to.eql('in_use'));",
+                  "pm.test('incident_id assigned', () => pm.expect(b.incident_id).to.eql(pm.environment.get('incident_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"in_use\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"latitude\": 34.06,\n  \"longitude\": -118.25\n}"
+              "raw": "{\n  \"status\": \"in_use\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437\n}"
             },
             "url": "{{base_url}}/api/equipment/{{equipment_id}}"
           }
@@ -278,10 +693,75 @@
       ]
     },
     {
-      "name": "Alerts",
+      "name": "07 Alerts",
       "item": [
         {
+          "name": "Create alert — critical evacuation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('Severity is critical', () => pm.expect(b.severity).to.eql('critical'));",
+                  "pm.test('incident_id matches', () => pm.expect(b.incident_id).to.eql(pm.environment.get('incident_id')));",
+                  "pm.environment.set('alert_id', b.id);",
+                  "console.log('alert_id =', b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"incident_id\": \"{{incident_id}}\",\n  \"title\": \"Mandatory evacuation order — Zone B\",\n  \"message\": \"All residents in Zone B must evacuate immediately via Route 66. Fire approaching from the north.\",\n  \"severity\": \"critical\",\n  \"created_by\": \"{{coordinator_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/alerts"
+          }
+        },
+        {
+          "name": "Create alert — general warning",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Severity is warning', () => pm.expect(b.severity).to.eql('warning'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Air quality warning\",\n  \"message\": \"Heavy smoke expected in the area. Use protective equipment.\",\n  \"severity\": \"warning\",\n  \"created_by\": \"{{coordinator_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/alerts"
+          }
+        },
+        {
           "name": "List alerts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('alerts is array', () => pm.expect(b.alerts).to.be.an('array'));",
+                  "pm.test('At least 2 alerts', () => pm.expect(b.alerts.length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -289,19 +769,19 @@
           }
         },
         {
-          "name": "Create alert",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"incident_id\": \"{{incident_id}}\",\n  \"title\": \"Evacuation order\",\n  \"message\": \"Residents in zone B must evacuate immediately\",\n  \"severity\": \"critical\",\n  \"created_by\": \"{{user_id}}\"\n}"
-            },
-            "url": "{{base_url}}/api/alerts"
-          }
-        },
-        {
           "name": "Get alert by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('alert_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -311,42 +791,72 @@
       ]
     },
     {
-      "name": "Channels",
+      "name": "08 Channels",
       "item": [
         {
-          "name": "List channels",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/api/channels?limit=100"
-          }
-        },
-        {
-          "name": "Create channel (incident)",
+          "name": "Create channel — incident comms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('incident_id matches', () => pm.expect(b.incident_id).to.eql(pm.environment.get('incident_id')));",
+                  "pm.test('team_id is null', () => pm.expect(b.team_id).to.be.null);",
+                  "pm.environment.set('channel_id', b.id);",
+                  "console.log('channel_id =', b.id);"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Incident #1 comms\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"is_public\": false,\n  \"created_by\": \"{{user_id}}\"\n}"
+              "raw": "{\n  \"name\": \"Incident #1 — General comms\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"is_public\": false,\n  \"created_by\": \"{{coordinator_id}}\"\n}"
             },
             "url": "{{base_url}}/api/channels"
           }
         },
         {
-          "name": "Create channel (team)",
+          "name": "Create channel — both ids set (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 422 on conflicting scope', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Alpha Team chat\",\n  \"team_id\": \"{{team_id}}\",\n  \"is_public\": false\n}"
+              "raw": "{\n  \"name\": \"Invalid channel\",\n  \"incident_id\": \"{{incident_id}}\",\n  \"team_id\": \"{{team_id}}\"\n}"
             },
             "url": "{{base_url}}/api/channels"
           }
         },
         {
           "name": "Get channel by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('ID matches', () => pm.expect(b.id).to.eql(pm.environment.get('channel_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -355,6 +865,16 @@
         },
         {
           "name": "Add channel member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -366,7 +886,67 @@
           }
         },
         {
+          "name": "Send message — firefighter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('channel_id matches', () => pm.expect(b.channel_id).to.eql(pm.environment.get('channel_id')));",
+                  "pm.test('Has content', () => pm.expect(b.content).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Alpha Team moving to north sector. Wind speed increasing.\",\n  \"user_id\": \"{{user_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/channels/{{channel_id}}/messages"
+          }
+        },
+        {
+          "name": "Send message — coordinator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Copy that. Additional unit dispatched to north flank.\",\n  \"user_id\": \"{{coordinator_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/channels/{{channel_id}}/messages"
+          }
+        },
+        {
           "name": "List channel messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('messages is array', () => pm.expect(b.messages).to.be.an('array'));",
+                  "pm.test('At least 2 messages', () => pm.expect(b.messages.length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -374,32 +954,46 @@
           }
         },
         {
-          "name": "Send message",
+          "name": "List channels",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('channels is array', () => pm.expect(b.channels).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"content\": \"Team moving to north sector\",\n  \"user_id\": \"{{user_id}}\"\n}"
-            },
-            "url": "{{base_url}}/api/channels/{{channel_id}}/messages"
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/channels?limit=100"
           }
         }
       ]
     },
     {
-      "name": "User locations",
+      "name": "09 User locations",
       "item": [
         {
-          "name": "List user locations",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{base_url}}/api/user-locations?limit=500"
-          }
-        },
-        {
-          "name": "Update user location (upsert)",
+          "name": "Update firefighter location",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('user_id matches', () => pm.expect(b.user_id).to.eql(pm.environment.get('user_id')));",
+                  "pm.test('latitude correct', () => pm.expect(b.latitude).to.be.closeTo(34.0522, 0.001));",
+                  "pm.test('longitude correct', () => pm.expect(b.longitude).to.be.closeTo(-118.2437, 0.001));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -411,7 +1005,64 @@
           }
         },
         {
-          "name": "Get user location",
+          "name": "Update coordinator location",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('user_id matches', () => pm.expect(b.user_id).to.eql(pm.environment.get('coordinator_id')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{coordinator_id}}\",\n  \"latitude\": 34.0600,\n  \"longitude\": -118.2500\n}"
+            },
+            "url": "{{base_url}}/api/user-locations"
+          }
+        },
+        {
+          "name": "List all user locations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('locations is array', () => pm.expect(b.locations).to.be.an('array'));",
+                  "pm.test('At least 2 locations', () => pm.expect(b.locations.length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/user-locations?limit=500"
+          }
+        },
+        {
+          "name": "Get firefighter location",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('user_id matches', () => pm.expect(b.user_id).to.eql(pm.environment.get('user_id')));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
