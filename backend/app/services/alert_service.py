@@ -41,6 +41,19 @@ def get_alert_by_id(alert_id: str) -> dict | None:
             return_connection(conn)
 
 
+def delete_alert(alert_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM alerts WHERE id = %s", (alert_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)
+
+
 def create_alert(
     title: str,
     message: str,

@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -22,5 +24,5 @@ class OrganizationResponse(BaseModel):
     type: str
     contact_phone: str | None
     address: str | None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime

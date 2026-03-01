@@ -149,7 +149,7 @@ CREATE INDEX idx_channel_members_user ON channel_members(user_id);
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     edited_at TIMESTAMP WITH TIME ZONE
@@ -203,4 +203,6 @@ CREATE TRIGGER update_teams_updated_at BEFORE UPDATE ON teams
 CREATE TRIGGER update_equipment_updated_at BEFORE UPDATE ON equipment
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_channels_updated_at BEFORE UPDATE ON channels
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_locations_updated_at BEFORE UPDATE ON user_locations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

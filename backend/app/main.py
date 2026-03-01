@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes import (
+    auth,
     health,
     incidents,
     incident_updates,
@@ -23,6 +24,7 @@ app = FastAPI(
 )
 
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(organizations.router, prefix="/api", tags=["Organizations"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(incidents.router, prefix="/api", tags=["Incidents"])

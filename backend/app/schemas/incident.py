@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +25,22 @@ class IncidentUpdate(BaseModel):
     resolved_at: str | None = None
 
 
+class IncidentResponse(BaseModel):
+    id: UUID
+    title: str
+    description: str | None
+    status: str
+    severity: str
+    latitude: float
+    longitude: float
+    address: str | None
+    reported_at: datetime
+    created_by: UUID | None
+    resolved_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class IncidentUpdateCreate(BaseModel):
     content: str = Field(..., min_length=1)
     user_id: UUID | None = None
@@ -37,4 +55,4 @@ class IncidentUpdateResponse(BaseModel):
     content: str
     status_before: str | None
     status_after: str | None
-    created_at: str
+    created_at: datetime

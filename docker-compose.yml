@@ -28,6 +28,8 @@ services:
       DB_NAME: ${POSTGRES_DB:-infernonet}
       DB_USER: ${POSTGRES_USER:-infernonet}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-infernonet_secret}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-long-random-string}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
     ports:
       - "8000:8000"
     volumes:
@@ -35,6 +37,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
 volumes:

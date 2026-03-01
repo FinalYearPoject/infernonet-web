@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -21,3 +23,17 @@ class EquipmentUpdate(BaseModel):
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
     metadata: dict | None = None
+
+
+class EquipmentResponse(BaseModel):
+    id: UUID
+    name: str
+    type: str
+    status: str
+    organization_id: UUID
+    incident_id: UUID | None
+    latitude: float | None
+    longitude: float | None
+    metadata: dict
+    created_at: datetime
+    updated_at: datetime

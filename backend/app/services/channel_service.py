@@ -68,6 +68,62 @@ def create_channel(
             return_connection(conn)
 
 
+def update_channel(channel_id: str, data: dict) -> dict | None:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        allowed = {"name", "is_public"}
+        updates = []
+        params = []
+        for key, val in data.items():
+            if key in allowed:
+                updates.append(f"{key} = %s")
+                params.append(val)
+        if not updates:
+            return get_channel_by_id(channel_id)
+        params.append(channel_id)
+        cur.execute(
+            f"""UPDATE channels SET {", ".join(updates)} WHERE id = %s
+                RETURNING id, name, incident_id, team_id, is_public, created_by, created_at, updated_at""",
+            params,
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row) if row else None
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def delete_channel(channel_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM channels WHERE id = %s", (channel_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def list_channel_members(channel_id: str) -> list[dict]:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "SELECT channel_id, user_id, joined_at FROM channel_members WHERE channel_id = %s ORDER BY joined_at",
+            (channel_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        if conn:
+            return_connection(conn)
+
+
 def add_channel_member(channel_id: str, user_id: str) -> None:
     conn = None
     try:
@@ -78,6 +134,22 @@ def add_channel_member(channel_id: str, user_id: str) -> None:
             (channel_id, user_id),
         )
         conn.commit()
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def remove_channel_member(channel_id: str, user_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM channel_members WHERE channel_id = %s AND user_id = %s",
+            (channel_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
     finally:
         if conn:
             return_connection(conn)
@@ -118,17 +190,32 @@ def create_message(channel_id: str, content: str, user_id: str | None = None) ->
             return_connection(conn)
 
 
-def get_message_by_id(message_id: str) -> dict | None:
+def update_message(message_id: str, content: str) -> dict | None:
     conn = None
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT id, channel_id, user_id, content, created_at, edited_at FROM messages WHERE id = %s",
-            (message_id,),
+            """UPDATE messages SET content = %s, edited_at = CURRENT_TIMESTAMP WHERE id = %s
+               RETURNING id, channel_id, user_id, content, created_at, edited_at""",
+            (content, message_id),
         )
         row = cur.fetchone()
+        conn.commit()
         return dict(row) if row else None
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def delete_message(message_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM messages WHERE id = %s", (message_id,))
+        conn.commit()
+        return cur.rowcount > 0
     finally:
         if conn:
             return_connection(conn)

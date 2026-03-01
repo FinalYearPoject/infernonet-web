@@ -85,3 +85,44 @@ def create_user(
     finally:
         if conn:
             return_connection(conn)
+
+
+def update_user(user_id: str, data: dict) -> dict | None:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        allowed = {"full_name", "role", "phone", "organization_id", "avatar_url", "is_active"}
+        updates = []
+        params = []
+        for key, val in data.items():
+            if key in allowed:
+                updates.append(f"{key} = %s")
+                params.append(str(val) if key == "organization_id" and val is not None else val)
+        if not updates:
+            return get_user_by_id(user_id)
+        params.append(user_id)
+        cur.execute(
+            f"""UPDATE users SET {", ".join(updates)} WHERE id = %s
+                RETURNING id, email, full_name, role, phone, organization_id, avatar_url, is_active, created_at, updated_at""",
+            params,
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row) if row else None
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def delete_user(user_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)

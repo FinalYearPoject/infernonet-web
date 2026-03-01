@@ -123,6 +123,19 @@ def remove_team_member(team_id: str, user_id: str) -> bool:
             return_connection(conn)
 
 
+def delete_team(team_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM teams WHERE id = %s", (team_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)
+
+
 def list_team_members(team_id: str) -> list[dict]:
     conn = None
     try:

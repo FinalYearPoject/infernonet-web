@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -18,5 +20,5 @@ class AlertResponse(BaseModel):
     message: str
     severity: str
     created_by: UUID | None
-    created_at: str
-    expires_at: str | None
+    created_at: datetime
+    expires_at: datetime | None

@@ -50,3 +50,44 @@ def create_organization(name: str, type: str, contact_phone: str | None = None, 
     finally:
         if conn:
             return_connection(conn)
+
+
+def update_organization(org_id: str, data: dict) -> dict | None:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        allowed = {"name", "type", "contact_phone", "address"}
+        updates = []
+        params = []
+        for key, val in data.items():
+            if key in allowed:
+                updates.append(f"{key} = %s")
+                params.append(val)
+        if not updates:
+            return get_organization_by_id(org_id)
+        params.append(org_id)
+        cur.execute(
+            f"""UPDATE organizations SET {", ".join(updates)} WHERE id = %s
+                RETURNING id, name, type, contact_phone, address, created_at, updated_at""",
+            params,
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row) if row else None
+    finally:
+        if conn:
+            return_connection(conn)
+
+
+def delete_organization(org_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM organizations WHERE id = %s", (org_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)

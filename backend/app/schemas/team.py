@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -18,10 +20,18 @@ class TeamMemberAdd(BaseModel):
     role_in_team: str = Field(default="member", max_length=50)
 
 
+class TeamMemberResponse(BaseModel):
+    id: UUID
+    team_id: UUID
+    user_id: UUID
+    role_in_team: str
+    joined_at: datetime
+
+
 class TeamResponse(BaseModel):
     id: UUID
     name: str
     organization_id: UUID
     incident_id: UUID | None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime

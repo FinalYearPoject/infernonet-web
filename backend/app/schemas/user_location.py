@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -13,4 +15,4 @@ class UserLocationResponse(BaseModel):
     user_id: UUID
     latitude: float
     longitude: float
-    updated_at: str
+    updated_at: datetime

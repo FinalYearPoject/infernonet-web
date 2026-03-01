@@ -123,6 +123,19 @@ def list_incidents(status_filter: str | None = None, limit: int = 50) -> list[di
             return_connection(conn)
 
 
+def delete_incident(incident_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM incidents WHERE id = %s", (incident_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)
+
+
 def get_incident_by_id(incident_id: str) -> dict | None:
     conn = None
     try:

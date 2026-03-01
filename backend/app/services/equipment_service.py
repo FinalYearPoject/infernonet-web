@@ -97,6 +97,19 @@ def create_equipment(
             return_connection(conn)
 
 
+def delete_equipment(equipment_id: str) -> bool:
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM equipment WHERE id = %s", (equipment_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        if conn:
+            return_connection(conn)
+
+
 def update_equipment(
     equipment_id: str,
     *,
