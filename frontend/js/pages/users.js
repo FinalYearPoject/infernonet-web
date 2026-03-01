@@ -13,6 +13,9 @@ async function renderUsers() {
 
   const orgMap = Object.fromEntries((orgs || []).map(o => [o.id, o.name]));
 
+  const currentUser = getCurrentUser();
+  const canManage = currentUser?.role === 'coordinator';
+
   function buildRows(list) {
     if (!list.length) return `<tr><td colspan="7"><div class="empty-state" style="padding:20px"><span class="empty-icon">👤</span>No users found</div></td></tr>`;
     return list.map(u => `
@@ -30,8 +33,11 @@ async function renderUsers() {
             : '<span class="badge badge-closed">Inactive</span>'}
         </td>
         <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(u.created_at)}</td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="openEditUserModal('${u.id}')">Edit</button>
+        <td style="display:flex;gap:6px">
+          ${canManage ? `
+            <button class="btn btn-ghost btn-sm" onclick="openEditUserModal('${u.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUserById('${u.id}','${u.full_name.replace(/'/g,"\\'")}')">Delete</button>
+          ` : ''}
         </td>
       </tr>`).join('');
   }
@@ -43,7 +49,7 @@ async function renderUsers() {
           <div class="page-title">Users</div>
           <div class="page-subtitle">${users.length} user${users.length !== 1 ? 's' : ''} total</div>
         </div>
-        <button class="btn btn-primary" id="btn-new-user">+ New User</button>
+        ${canManage ? `<button class="btn btn-primary" id="btn-new-user">+ New User</button>` : ''}
       </div>
 
       <div class="filter-bar">
@@ -88,8 +94,8 @@ async function renderUsers() {
   document.getElementById('user-search').addEventListener('input', applyFilter);
   document.getElementById('filter-role').addEventListener('change', applyFilter);
 
-  /* Create user modal */
-  document.getElementById('btn-new-user').addEventListener('click', () => openCreateUserModal(orgs, () => renderUsers()));
+  /* Create user modal — coordinator only */
+  document.getElementById('btn-new-user')?.addEventListener('click', () => openCreateUserModal(orgs, () => renderUsers()));
 }
 
 /* ===== Create User Modal ===== */
@@ -240,4 +246,16 @@ async function openEditUserModal(userId) {
       btn.disabled = false; btn.textContent = 'Save Changes';
     }
   });
+}
+
+/* ===== Delete User ===== */
+async function deleteUserById(id, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  try {
+    await api.deleteUser(id);
+    toast('User deleted', 'success');
+    renderUsers();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }

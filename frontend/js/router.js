@@ -1,11 +1,14 @@
 /* ===== Hash-based SPA Router ===== */
 
 const routes = [
-  { pattern: /^\/login$/,           render: renderLogin },
-  { pattern: /^\/incidents$/,       render: renderIncidents },
-  { pattern: /^\/incidents\/(.+)$/, render: (m) => renderIncidentDetail(m[1]) },
-  { pattern: /^\/users$/,           render: renderUsers },
-  { pattern: /^\/channels\/(.+)$/,  render: (m) => renderChannel(m[1]) },
+  { pattern: /^\/login$/,              render: renderLogin },
+  { pattern: /^\/incidents$/,          render: renderIncidents },
+  { pattern: /^\/incidents\/(.+)$/,    render: (m) => renderIncidentDetail(m[1]) },
+  { pattern: /^\/users$/,              render: renderUsers },
+  { pattern: /^\/channels\/(.+)$/,     render: (m) => renderChannel(m[1]) },
+  { pattern: /^\/equipment$/,          render: renderEquipment },
+  { pattern: /^\/map$/,                render: renderMap },
+  { pattern: /^\/organizations$/,      render: renderOrganizations },
 ];
 
 function resolveHash() {

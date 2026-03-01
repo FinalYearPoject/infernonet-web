@@ -16,6 +16,7 @@
   --accent:        #f05a1a;
   --accent-hover:  #d94b0f;
   --accent-dim:    rgba(240, 90, 26, 0.15);
+  --primary:       #1e2430;
 
   --success:   #2ecc71;
   --warning:   #f39c12;
@@ -615,6 +616,9 @@ select.form-control option { background: var(--bg-elevated); }
 /* ===== Inline list (team members, channel members) ===== */
 .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -622,6 +626,36 @@ select.form-control option { background: var(--bg-elevated); }
   font-size: 12px;
   color: var(--text-secondary);
 }
+.chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+.chip-remove:hover { color: var(--danger); }
+
+/* ===== Inline icon buttons (message edit/delete) ===== */
+.btn-inline {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.message-item:hover .btn-inline { opacity: 1; }
+.btn-inline:hover { background: var(--bg-hover); }
+
+.message-actions { display: inline-flex; gap: 2px; margin-left: 4px; }
+
+/* ===== Surface variant for nested panels ===== */
+.surface-alt { background: var(--bg-elevated); }
 
 /* ===== Search / filter bar ===== */
 .filter-bar {

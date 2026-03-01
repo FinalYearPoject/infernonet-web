@@ -42,7 +42,7 @@ async function renderIncidents() {
           <div class="page-title">Incidents</div>
           <div class="page-subtitle">${incidents.length} incident${incidents.length !== 1 ? 's' : ''} total</div>
         </div>
-        <button class="btn btn-primary" id="btn-new-incident">+ New Incident</button>
+        ${getCurrentUser()?.role === 'coordinator' ? `<button class="btn btn-primary" id="btn-new-incident">+ New Incident</button>` : ''}
       </div>
 
       <div class="filter-bar">
@@ -55,9 +55,10 @@ async function renderIncidents() {
         </select>
         <select class="form-control" id="filter-status">
           <option value="">All statuses</option>
+          <option value="reported">Reported</option>
           <option value="active">Active</option>
+          <option value="contained">Contained</option>
           <option value="resolved">Resolved</option>
-          <option value="closed">Closed</option>
         </select>
       </div>
 
@@ -103,8 +104,8 @@ async function renderIncidents() {
   document.getElementById('filter-severity').addEventListener('change', applyFilter);
   document.getElementById('filter-status').addEventListener('change', applyFilter);
 
-  /* Create incident modal */
-  document.getElementById('btn-new-incident').addEventListener('click', () => {
+  /* Create incident modal — coordinator only */
+  document.getElementById('btn-new-incident')?.addEventListener('click', () => {
     const user = getCurrentUser();
     openModal('New Incident', `
       <form id="incident-form">
@@ -130,9 +131,10 @@ async function renderIncidents() {
           <div class="form-group">
             <label class="form-label">Status</label>
             <select class="form-control" id="inc-status">
+              <option value="reported">Reported</option>
               <option value="active">Active</option>
+              <option value="contained">Contained</option>
               <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
             </select>
           </div>
         </div>
@@ -142,12 +144,12 @@ async function renderIncidents() {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Latitude</label>
-            <input class="form-control" id="inc-lat" type="number" step="any" placeholder="34.0522" />
+            <label class="form-label">Latitude *</label>
+            <input class="form-control" id="inc-lat" type="number" step="any" placeholder="34.0522" required />
           </div>
           <div class="form-group">
-            <label class="form-label">Longitude</label>
-            <input class="form-control" id="inc-lng" type="number" step="any" placeholder="-118.2437" />
+            <label class="form-label">Longitude *</label>
+            <input class="form-control" id="inc-lng" type="number" step="any" placeholder="-118.2437" required />
           </div>
         </div>
         <div class="form-actions">
@@ -162,16 +164,13 @@ async function renderIncidents() {
       const btn = document.getElementById('inc-submit-btn');
       btn.disabled = true; btn.textContent = 'Creating…';
       try {
-        const lat = document.getElementById('inc-lat').value;
-        const lng = document.getElementById('inc-lng').value;
         await api.createIncident({
           title:       document.getElementById('inc-title').value.trim(),
           description: document.getElementById('inc-desc').value.trim() || null,
           severity:    document.getElementById('inc-severity').value,
-          status:      document.getElementById('inc-status').value,
           address:     document.getElementById('inc-address').value.trim() || null,
-          latitude:    lat ? parseFloat(lat) : null,
-          longitude:   lng ? parseFloat(lng) : null,
+          latitude:    parseFloat(document.getElementById('inc-lat').value),
+          longitude:   parseFloat(document.getElementById('inc-lng').value),
           created_by:  user?.id || null,
         });
         closeModal();

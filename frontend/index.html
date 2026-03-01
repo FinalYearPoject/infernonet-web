@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>InfernoNet</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 
@@ -14,8 +15,11 @@
       <span class="brand-name">InfernoNet</span>
     </div>
     <nav class="header-nav">
-      <a href="#/incidents" class="nav-link" data-route="incidents">Incidents</a>
-      <a href="#/users"     class="nav-link" data-route="users">Users</a>
+      <a href="#/incidents"     class="nav-link" data-route="incidents">Incidents</a>
+      <a href="#/users"         class="nav-link" data-route="users">Users</a>
+      <a href="#/organizations" class="nav-link" data-route="organizations">Organizations</a>
+      <a href="#/equipment"     class="nav-link" data-route="equipment">Equipment</a>
+      <a href="#/map"           class="nav-link" data-route="map">Live Map</a>
     </nav>
     <div class="header-user">
       <span class="user-badge" id="nav-user-info"></span>
@@ -37,6 +41,7 @@
 
   <div id="toast-container" class="toast-container"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/pages/login.js"></script>
@@ -44,6 +49,9 @@
   <script src="/js/pages/incident.js"></script>
   <script src="/js/pages/users.js"></script>
   <script src="/js/pages/channels.js"></script>
+  <script src="/js/pages/equipment.js"></script>
+  <script src="/js/pages/map.js"></script>
+  <script src="/js/pages/organizations.js"></script>
   <script src="/js/router.js"></script>
 </body>
 </html>

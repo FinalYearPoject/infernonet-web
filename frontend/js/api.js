@@ -46,7 +46,10 @@ const api = {
     const r = await apiFetch('/organizations');
     return r?.organizations ?? r ?? [];
   },
+  getOrganization: (id) => apiFetch(`/organizations/${id}`),
   createOrganization: (data) => apiFetch('/organizations', { method: 'POST', body: JSON.stringify(data) }),
+  updateOrganization: (id, data) => apiFetch(`/organizations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteOrganization: (id) => apiFetch(`/organizations/${id}`, { method: 'DELETE' }),
 
   /* Users */
   getUsers: async (params = {}) => {
@@ -69,6 +72,11 @@ const api = {
   createIncident: (data) => apiFetch('/incidents', { method: 'POST', body: JSON.stringify(data) }),
   updateIncident: (id, data) => apiFetch(`/incidents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteIncident: (id) => apiFetch(`/incidents/${id}`, { method: 'DELETE' }),
+  getIncidentUpdates: async (id) => {
+    const r = await apiFetch(`/incidents/${id}/updates`);
+    return r?.updates ?? r ?? [];
+  },
+  createIncidentUpdate: (id, data) => apiFetch(`/incidents/${id}/updates`, { method: 'POST', body: JSON.stringify(data) }),
 
   /* Teams */
   getTeams: async (params = {}) => {
@@ -76,9 +84,17 @@ const api = {
     const r = await apiFetch(`/teams${qs ? '?' + qs : ''}`);
     return r?.teams ?? r ?? [];
   },
+  getTeam: (id) => apiFetch(`/teams/${id}`),
+  getTeamMembers: async (id) => {
+    const r = await apiFetch(`/teams/${id}/members`);
+    return r?.members ?? r ?? [];
+  },
   createTeam: (data) => apiFetch('/teams', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeam: (id, data) => apiFetch(`/teams/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTeam: (id) => apiFetch(`/teams/${id}`, { method: 'DELETE' }),
   addTeamMember: (teamId, userId) =>
     apiFetch(`/teams/${teamId}/members`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  removeTeamMember: (teamId, userId) => apiFetch(`/teams/${teamId}/members/${userId}`, { method: 'DELETE' }),
 
   /* Equipment */
   getEquipment: async (params = {}) => {
@@ -86,6 +102,10 @@ const api = {
     const r = await apiFetch(`/equipment${qs ? '?' + qs : ''}`);
     return r?.equipment ?? r ?? [];
   },
+  getEquipmentItem: (id) => apiFetch(`/equipment/${id}`),
+  createEquipment: (data) => apiFetch('/equipment', { method: 'POST', body: JSON.stringify(data) }),
+  updateEquipment: (id, data) => apiFetch(`/equipment/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteEquipment: (id) => apiFetch(`/equipment/${id}`, { method: 'DELETE' }),
 
   /* Alerts */
   getAlerts: async (params = {}) => {
@@ -94,6 +114,7 @@ const api = {
     return r?.alerts ?? r ?? [];
   },
   createAlert: (data) => apiFetch('/alerts', { method: 'POST', body: JSON.stringify(data) }),
+  deleteAlert: (id) => apiFetch(`/alerts/${id}`, { method: 'DELETE' }),
 
   /* Channels */
   getChannels: async (params = {}) => {
@@ -115,7 +136,21 @@ const api = {
   },
   sendMessage: (channelId, content) =>
     apiFetch(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+  editMessage: (channelId, messageId, content) =>
+    apiFetch(`/channels/${channelId}/messages/${messageId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
+  deleteMessage: (channelId, messageId) =>
+    apiFetch(`/channels/${channelId}/messages/${messageId}`, { method: 'DELETE' }),
+  updateChannel: (id, data) => apiFetch(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteChannel: (id) => apiFetch(`/channels/${id}`, { method: 'DELETE' }),
+  removeChannelMember: (channelId, userId) =>
+    apiFetch(`/channels/${channelId}/members/${userId}`, { method: 'DELETE' }),
 
   /* User Locations */
-  upsertLocation: (data) => apiFetch('/user-locations', { method: 'POST', body: JSON.stringify(data) }),
+  getUserLocations: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    const r = await apiFetch(`/user-locations${qs ? '?' + qs : ''}`);
+    return r?.locations ?? r ?? [];
+  },
+  getUserLocation: (userId) => apiFetch(`/users/${userId}/location`),
+  upsertLocation: (data) => apiFetch('/user-locations', { method: 'PUT', body: JSON.stringify(data) }),
 };
