@@ -147,6 +147,14 @@ async function renderIncidentDetail(id) {
         </div>
       </div>
 
+      ${incident.latitude != null && incident.longitude != null ? `
+      <!-- Location map -->
+      <div class="section-heading"><span>Location</span></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="incident-map-container" style="height:320px;width:100%"></div>
+      </div>
+      ` : ''}
+
       <!-- Teams -->
       <div class="section-heading">
         <span>Teams (${(teams || []).length})</span>
@@ -193,6 +201,28 @@ async function renderIncidentDetail(id) {
       </div>
     </div>
   `);
+
+  /* Init incident location map */
+  if (incident.latitude != null && incident.longitude != null && typeof L !== 'undefined') {
+    if (window._incidentDetailMap) {
+      window._incidentDetailMap.remove();
+      window._incidentDetailMap = null;
+    }
+    const mapEl = document.getElementById('incident-map-container');
+    if (mapEl) {
+      const lat = Number(incident.latitude);
+      const lng = Number(incident.longitude);
+      const map = L.map('incident-map-container').setView([lat, lng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      }).addTo(map);
+      L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(`<strong>${(incident.title || '').replace(/</g, '&lt;')}</strong>${incident.address ? '<br>' + (incident.address || '').replace(/</g, '&lt;') : ''}`);
+      window._incidentDetailMap = map;
+    }
+  }
 
   /* Edit status */
   if (isCoordinator) {
