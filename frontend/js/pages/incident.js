@@ -186,7 +186,7 @@ async function renderIncidentDetail(id) {
       <!-- Channels -->
       <div class="section-heading">
         <span>Channels (${(channels || []).length})</span>
-        <button class="btn btn-secondary btn-sm" id="btn-add-channel">+ Add Channel</button>
+        ${isStaff ? `<button class="btn btn-secondary btn-sm" id="btn-add-channel">+ Add Channel</button>` : ''}
       </div>
       <div class="table-wrap">
         <table>
@@ -198,7 +198,7 @@ async function renderIncidentDetail(id) {
       <!-- Timeline -->
       <div class="section-heading">
         <span>Timeline (${(updates || []).length})</span>
-        <button class="btn btn-secondary btn-sm" id="btn-add-update">+ Add Update</button>
+        ${isStaff ? `<button class="btn btn-secondary btn-sm" id="btn-add-update">+ Add Update</button>` : ''}
       </div>
       <div id="timeline-container" style="padding:4px 0">
         ${buildTimeline(updates)}
@@ -392,8 +392,9 @@ async function renderIncidentDetail(id) {
     });
   }
 
-  /* Add channel */
-  document.getElementById('btn-add-channel').addEventListener('click', () => {
+  /* Add channel — coordinator or firefighter only */
+  if (isStaff) {
+    document.getElementById('btn-add-channel').addEventListener('click', () => {
     openModal('Add Channel', `
       <form id="add-channel-form">
         <div class="form-group">
@@ -433,9 +434,11 @@ async function renderIncidentDetail(id) {
       }
     });
   });
+  }
 
-  /* Add timeline update */
-  document.getElementById('btn-add-update').addEventListener('click', () => {
+  /* Add timeline update — coordinator or firefighter only */
+  if (isStaff) {
+    document.getElementById('btn-add-update').addEventListener('click', () => {
     openModal('Add Timeline Update', `
       <form id="add-update-form">
         <div class="form-group">
@@ -490,6 +493,7 @@ async function renderIncidentDetail(id) {
       }
     });
   });
+  }
 }
 
 /* ===== Toggle Team Members ===== */

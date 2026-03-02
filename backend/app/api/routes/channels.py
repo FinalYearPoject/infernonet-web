@@ -55,6 +55,11 @@ def get_channel(channel_id: str, current_user: dict = Depends(get_current_user))
     summary="Create channel (incident, team, or general)",
 )
 def create_channel(body: ChannelCreate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] == "civilian":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only coordinators and firefighters can create channels",
+        )
     return svc.create_channel(
         name=body.name,
         incident_id=str(body.incident_id) if body.incident_id else None,
