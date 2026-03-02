@@ -102,10 +102,17 @@ async function refreshMapIncidents() {
     const lat = Number(inc.latitude);
     const lng = Number(inc.longitude);
     const color = severityColor[inc.severity] || severityColor[inc.status] || '#3498db';
-    const popup = `<strong>${(inc.title || '').replace(/</g, '&lt;')}</strong><br>${badge(inc.status)} ${badge(inc.severity)}<br>${inc.address ? (inc.address + '<br>').replace(/</g, '&lt;') : ''}<a href="#/incidents/${id}">View incident</a>`;
+    const popupHtml = `<strong>${(inc.title || '').replace(/</g, '&lt;')}</strong><br>${badge(inc.status)} ${badge(inc.severity)}<br>${inc.address ? (inc.address + '<br>').replace(/</g, '&lt;') : ''}<a href="#/incidents/${id}">View incident</a>`;
+    const popupContent = (() => {
+      const div = document.createElement('div');
+      div.innerHTML = popupHtml;
+      return div;
+    })();
 
     if (_mapMarkers[id]) {
-      _mapMarkers[id].setLatLng([lat, lng]).setPopupContent(popup);
+      const nextContent = document.createElement('div');
+      nextContent.innerHTML = popupHtml;
+      _mapMarkers[id].setLatLng([lat, lng]).setPopupContent(nextContent);
     } else {
       const icon = L.divIcon({
         html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
@@ -115,7 +122,7 @@ async function refreshMapIncidents() {
       });
       _mapMarkers[id] = L.marker([lat, lng], { icon })
         .addTo(_mapInstance)
-        .bindPopup(popup);
+        .bindPopup(popupContent);
     }
   }
 
