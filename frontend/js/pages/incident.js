@@ -154,7 +154,7 @@ async function renderIncidentDetail(id) {
       ${incident.latitude != null && incident.longitude != null ? `
       <!-- Location map -->
       <div class="section-heading"><span>Location</span></div>
-      <div class="card" style="padding:0;overflow:hidden">
+      <div class="card card--map-wrap">
         <div id="incident-map-container" style="height:320px;width:100%"></div>
       </div>
       ` : ''}
@@ -225,6 +225,7 @@ async function renderIncidentDetail(id) {
         .addTo(map)
         .bindPopup(`<strong>${(incident.title || '').replace(/</g, '&lt;')}</strong>${incident.address ? '<br>' + (incident.address || '').replace(/</g, '&lt;') : ''}`);
       window._incidentDetailMap = map;
+      setTimeout(() => map.invalidateSize(), 50);
     }
   }
 

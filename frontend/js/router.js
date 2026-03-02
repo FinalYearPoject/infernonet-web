@@ -50,6 +50,7 @@ function openModal(title, bodyHTML) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
   document.getElementById('modal-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
@@ -59,6 +60,7 @@ function closeModal() {
   }
   document.getElementById('modal-overlay').style.display = 'none';
   document.getElementById('modal-body').innerHTML = '';
+  document.body.style.overflow = '';
 }
 
 document.getElementById('modal-close')?.addEventListener('click', closeModal);

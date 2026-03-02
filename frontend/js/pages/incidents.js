@@ -197,9 +197,12 @@ async function renderIncidents() {
         document.getElementById('inc-lng').value = lng.toFixed(6);
       });
       window._incidentFormMap = map;
-      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => {
+        map.invalidateSize();
+        setTimeout(() => map.invalidateSize(), 150);
+      }, 120);
     }
-    setTimeout(initIncidentFormMap, 80);
+    setTimeout(initIncidentFormMap, 100);
 
     document.getElementById('incident-form').addEventListener('submit', async (e) => {
       e.preventDefault();
