@@ -22,6 +22,7 @@ async function renderIncidentDetail(id) {
 
   const user = getCurrentUser();
   const isCoordinator = user?.role === 'coordinator';
+  const isStaff = user?.role === 'coordinator' || user?.role === 'firefighter';
   const userMap = Object.fromEntries((users || []).map(u => [u.id, u]));
 
   /* Teams section — expandable rows with member loading */
@@ -108,8 +109,11 @@ async function renderIncidentDetail(id) {
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           ${badge(incident.severity)}
           ${badge(incident.status)}
-          ${isCoordinator ? `
+          ${incident.status === 'pending' ? '<span class="badge badge-pending" style="opacity:0.9">Awaiting coordinator approval</span>' : ''}
+          ${isStaff ? `
             <button class="btn btn-secondary btn-sm" id="btn-edit-incident">Edit Status</button>
+          ` : ''}
+          ${isCoordinator ? `
             <button class="btn btn-danger btn-sm" id="btn-delete-incident">Delete</button>
           ` : ''}
         </div>
@@ -224,14 +228,15 @@ async function renderIncidentDetail(id) {
     }
   }
 
-  /* Edit status */
-  if (isCoordinator) {
+  /* Edit status — coordinator or firefighter */
+  if (isStaff) {
     document.getElementById('btn-edit-incident').addEventListener('click', () => {
       openModal('Edit Incident Status', `
         <form id="edit-incident-form">
           <div class="form-group">
             <label class="form-label">Status</label>
             <select class="form-control" id="edit-inc-status">
+              <option value="pending"    ${incident.status === 'pending'    ? 'selected' : ''}>Pending</option>
               <option value="reported"  ${incident.status === 'reported'  ? 'selected' : ''}>Reported</option>
               <option value="active"    ${incident.status === 'active'    ? 'selected' : ''}>Active</option>
               <option value="contained" ${incident.status === 'contained' ? 'selected' : ''}>Contained</option>
@@ -271,8 +276,10 @@ async function renderIncidentDetail(id) {
         }
       });
     });
+  }
 
-    /* Delete incident */
+  /* Delete incident — coordinator only */
+  if (isCoordinator) {
     document.getElementById('btn-delete-incident').addEventListener('click', async () => {
       if (!confirm(`Delete incident "${incident.title}"? This action cannot be undone.`)) return;
       try {

@@ -19,6 +19,12 @@ function resolveHash() {
     window.location.hash = '#/login';
     return;
   }
+  /* civilians: only Incidents and Live Map */
+  const user = getCurrentUser();
+  if (user?.role === 'civilian' && ['/users', '/organizations', '/equipment'].includes(hash)) {
+    window.location.hash = '#/incidents';
+    return;
+  }
   /* already logged in, redirect away from login */
   if (isAuthenticated() && hash === '/login') {
     window.location.hash = '#/incidents';
@@ -47,6 +53,10 @@ function openModal(title, bodyHTML) {
 }
 
 function closeModal() {
+  if (window._incidentFormMap) {
+    window._incidentFormMap.remove();
+    window._incidentFormMap = null;
+  }
   document.getElementById('modal-overlay').style.display = 'none';
   document.getElementById('modal-body').innerHTML = '';
 }

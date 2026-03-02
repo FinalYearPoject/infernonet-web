@@ -42,6 +42,10 @@ function updateHeader() {
   if (user) {
     header.style.display = 'flex';
     userInfo.textContent = `${user.email} · ${user.role}`;
+    /* Civilians see only Incidents and Live Map */
+    document.querySelectorAll('.nav-link[data-staff-only]').forEach(link => {
+      link.style.display = user.role === 'civilian' ? 'none' : '';
+    });
   } else {
     header.style.display = 'none';
     userInfo.textContent = '';

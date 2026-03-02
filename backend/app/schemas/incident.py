@@ -17,7 +17,7 @@ class IncidentCreate(BaseModel):
 class IncidentUpdate(BaseModel):
     title: str | None = Field(None, max_length=500)
     description: str | None = None
-    status: str | None = Field(None, pattern="^(reported|active|contained|resolved)$")
+    status: str | None = Field(None, pattern="^(pending|reported|active|contained|resolved)$")
     severity: str | None = Field(None, pattern="^(low|medium|high|critical)$")
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)

@@ -8,7 +8,6 @@ from app.api.routes import (
     equipment,
     alerts,
     channels,
-    user_locations,
 )
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "equipment",
     "alerts",
     "channels",
-    "user_locations",
 ]

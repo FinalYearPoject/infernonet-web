@@ -11,7 +11,6 @@ from app.api.routes import (
     equipment,
     alerts,
     channels,
-    user_locations,
 )
 
 app = FastAPI(
@@ -33,4 +32,3 @@ app.include_router(teams.router, prefix="/api", tags=["Teams"])
 app.include_router(equipment.router, prefix="/api", tags=["Equipment"])
 app.include_router(alerts.router, prefix="/api", tags=["Alerts"])
 app.include_router(channels.router, prefix="/api", tags=["Channels"])
-app.include_router(user_locations.router, prefix="/api", tags=["User locations"])

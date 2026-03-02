@@ -222,6 +222,9 @@ a:hover { color: var(--accent-hover); }
 .badge-low       { background: rgba(46,204,113,.18); color: #2ecc71; }
 
 .badge-active    { background: rgba(46,204,113,.18); color: #2ecc71; }
+.badge-pending   { background: rgba(149,165,166,.18); color: #95a5a6; }
+.badge-reported  { background: rgba(243,156,18,.18); color: #f39c12; }
+.badge-contained { background: rgba(52,152,219,.18); color: #3498db; }
 .badge-resolved  { background: rgba(52,152,219,.18); color: #3498db; }
 .badge-closed    { background: rgba(138,148,168,.18); color: #8a94a8; }
 

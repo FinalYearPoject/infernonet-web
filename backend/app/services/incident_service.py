@@ -10,17 +10,19 @@ def create_incident(
     severity: str = "medium",
     address: str | None = None,
     created_by: str | None = None,
+    created_by_role: str | None = None,
 ) -> dict:
+    status = "pending" if created_by_role == "civilian" else "reported"
     conn = None
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            """INSERT INTO incidents (title, description, severity, latitude, longitude, address, created_by)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """INSERT INTO incidents (title, description, status, severity, latitude, longitude, address, created_by)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                RETURNING id, title, description, status, severity, latitude, longitude, address,
                          reported_at, created_by, resolved_at, created_at, updated_at""",
-            (title, description, severity, latitude, longitude, address, created_by),
+            (title, description, status, severity, latitude, longitude, address, created_by),
         )
         row = cur.fetchone()
         conn.commit()
@@ -89,32 +91,37 @@ def update_incident(
             return_connection(conn)
 
 
-def list_incidents(status_filter: str | None = None, limit: int = 50) -> list[dict]:
+def list_incidents(
+    status_filter: str | None = None,
+    limit: int = 50,
+    role: str | None = None,
+    user_id: str | None = None,
+) -> list[dict]:
     conn = None
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
+        conditions = []
+        params = []
+        if role == "civilian" and user_id:
+            # Civilians see only approved incidents (non-pending) or their own pending
+            conditions.append("(status != %s OR created_by = %s)")
+            params.extend(["pending", user_id])
         if status_filter:
-            cur.execute(
-                """
-                SELECT id, title, status, severity, latitude, longitude, address, reported_at, created_at
-                FROM incidents
-                WHERE status = %s
-                ORDER BY reported_at DESC
-                LIMIT %s
-                """,
-                (status_filter, limit),
-            )
-        else:
-            cur.execute(
-                """
-                SELECT id, title, status, severity, latitude, longitude, address, reported_at, created_at
-                FROM incidents
-                ORDER BY reported_at DESC
-                LIMIT %s
-                """,
-                (limit,),
-            )
+            conditions.append("status = %s")
+            params.append(status_filter)
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        params.append(limit)
+        cur.execute(
+            f"""
+            SELECT id, title, status, severity, latitude, longitude, address, reported_at, created_at
+            FROM incidents
+            {where}
+            ORDER BY reported_at DESC
+            LIMIT %s
+            """,
+            params,
+        )
         rows = cur.fetchall()
         cur.close()
         return [dict(r) for r in rows]
@@ -136,7 +143,11 @@ def delete_incident(incident_id: str) -> bool:
             return_connection(conn)
 
 
-def get_incident_by_id(incident_id: str) -> dict | None:
+def get_incident_by_id(
+    incident_id: str,
+    role: str | None = None,
+    user_id: str | None = None,
+) -> dict | None:
     conn = None
     try:
         conn = get_connection()
@@ -152,7 +163,15 @@ def get_incident_by_id(incident_id: str) -> dict | None:
         )
         row = cur.fetchone()
         cur.close()
-        return dict(row) if row else None
+        if not row:
+            return None
+        d = dict(row)
+        # Civilian can only view pending incident if they created it
+        if role == "civilian" and d.get("status") == "pending":
+            created_by = str(d["created_by"]) if d.get("created_by") else None
+            if created_by != user_id:
+                return None
+        return d
     finally:
         if conn:
             return_connection(conn)

@@ -144,13 +144,4 @@ const api = {
   deleteChannel: (id) => apiFetch(`/channels/${id}`, { method: 'DELETE' }),
   removeChannelMember: (channelId, userId) =>
     apiFetch(`/channels/${channelId}/members/${userId}`, { method: 'DELETE' }),
-
-  /* User Locations */
-  getUserLocations: async (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    const r = await apiFetch(`/user-locations${qs ? '?' + qs : ''}`);
-    return r?.locations ?? r ?? [];
-  },
-  getUserLocation: (userId) => apiFetch(`/users/${userId}/location`),
-  upsertLocation: (data) => apiFetch('/user-locations', { method: 'PUT', body: JSON.stringify(data) }),
 };

@@ -2,7 +2,12 @@ from app.core.database import get_connection, return_connection
 from psycopg2.extras import RealDictCursor
 
 
-def list_channels(incident_id: str | None = None, team_id: str | None = None, limit: int = 100) -> list[dict]:
+def list_channels(
+    incident_id: str | None = None,
+    team_id: str | None = None,
+    limit: int = 100,
+    role: str | None = None,
+) -> list[dict]:
     conn = None
     try:
         conn = get_connection()
@@ -15,6 +20,8 @@ def list_channels(incident_id: str | None = None, team_id: str | None = None, li
         if team_id:
             conditions.append("team_id = %s")
             params.append(team_id)
+        if role == "civilian":
+            conditions.append("is_public = TRUE")
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         params.append(limit)
         cur.execute(
