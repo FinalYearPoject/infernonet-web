@@ -3,11 +3,12 @@
 async function renderIncidentDetail(id) {
   mount(`<div class="page"><div class="loading-state"><span class="spinner"></span> Loading incident…</div></div>`);
 
-  let incident, teams, alerts, channels, users, organizations, updates;
+  let incident, teams, equipment, alerts, channels, users, organizations, updates;
   try {
-    [incident, teams, alerts, channels, users, organizations, updates] = await Promise.all([
+    [incident, teams, equipment, alerts, channels, users, organizations, updates] = await Promise.all([
       api.getIncident(id),
       api.getTeams({ incident_id: id }),
+      api.getEquipment({ incident_id: id }),
       api.getAlerts({ incident_id: id }),
       api.getChannels({ incident_id: id }),
       api.getUsers(),
@@ -51,6 +52,23 @@ async function renderIncidentDetail(id) {
             <span style="color:var(--text-muted)">Loading members…</span>
           </div>
         </td>
+      </tr>`).join('');
+  }
+
+  /* Equipment section — assigned to this incident */
+  function buildEquipmentRows(equipmentList) {
+    if (!(equipmentList || []).length) {
+      return `<tr><td colspan="4"><div class="empty-state" style="padding:20px">No equipment assigned to this incident</div></td></tr>`;
+    }
+    return equipmentList.map(e => `
+      <tr>
+        <td>
+          <div style="font-weight:500">${(e.name || '—').replace(/</g, '&lt;')}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${(e.type || '').replace(/</g, '&lt;')}</div>
+        </td>
+        <td><span class="badge badge-${e.status}">${(e.status || '').replace(/_/g, ' ').toUpperCase()}</span></td>
+        <td>${orgMap[e.organization_id] ?? '—'}</td>
+        <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(e.created_at)}</td>
       </tr>`).join('');
   }
 
@@ -170,6 +188,17 @@ async function renderIncidentDetail(id) {
         <table>
           <thead><tr><th>Name</th><th>Host Organization</th><th>Created</th><th></th></tr></thead>
           <tbody id="teams-tbody">${buildTeamRows(teams)}</tbody>
+        </table>
+      </div>
+
+      <!-- Equipment -->
+      <div class="section-heading">
+        <span>Equipment (${(equipment || []).length})</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name / Type</th><th>Status</th><th>Organization</th><th>Added</th></tr></thead>
+          <tbody>${buildEquipmentRows(equipment)}</tbody>
         </table>
       </div>
 

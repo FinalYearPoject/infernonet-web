@@ -30,7 +30,7 @@ async function renderEquipment() {
           <div style="font-weight:500">${e.name}</div>
           <div style="font-size:12px;color:var(--text-muted)">${e.type}</div>
         </td>
-        <td>${badge(e.status)}</td>
+        <td><span class="badge badge-${e.status}">${(e.status || '').replace(/_/g, ' ').toUpperCase()}</span></td>
         <td>${orgMap[e.organization_id] || '—'}</td>
         <td style="color:var(--text-secondary);font-size:13px">${incMap[e.incident_id] || '—'}</td>
         <td>${e.latitude != null ? `${e.latitude.toFixed(4)}, ${e.longitude.toFixed(4)}` : '—'}</td>
