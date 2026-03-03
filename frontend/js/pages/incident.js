@@ -3,14 +3,15 @@
 async function renderIncidentDetail(id) {
   mount(`<div class="page"><div class="loading-state"><span class="spinner"></span> Loading incident…</div></div>`);
 
-  let incident, teams, alerts, channels, users, updates;
+  let incident, teams, alerts, channels, users, organizations, updates;
   try {
-    [incident, teams, alerts, channels, users, updates] = await Promise.all([
+    [incident, teams, alerts, channels, users, organizations, updates] = await Promise.all([
       api.getIncident(id),
       api.getTeams({ incident_id: id }),
       api.getAlerts({ incident_id: id }),
       api.getChannels({ incident_id: id }),
       api.getUsers(),
+      api.getOrganizations(),
       api.getIncidentUpdates(id),
     ]);
   } catch (err) {
@@ -24,6 +25,7 @@ async function renderIncidentDetail(id) {
   const isCoordinator = user?.role === 'coordinator';
   const isStaff = user?.role === 'coordinator' || user?.role === 'firefighter';
   const userMap = Object.fromEntries((users || []).map(u => [u.id, u]));
+  const orgMap = Object.fromEntries((organizations || []).map(o => [o.id, o.name]));
 
   /* Teams section — expandable rows with member loading */
   function buildTeamRows(teamList) {
@@ -35,7 +37,7 @@ async function renderIncidentDetail(id) {
         <td>
           <div style="font-weight:500">${t.name}</div>
         </td>
-        <td><span id="member-count-${t.id}">${t.member_count ?? '—'}</span></td>
+        <td>${orgMap[t.organization_id] ?? '—'}</td>
         <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(t.created_at)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="toggleTeamMembers('${t.id}')">Members</button>
@@ -166,7 +168,7 @@ async function renderIncidentDetail(id) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Members</th><th>Created</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Host Organization</th><th>Created</th><th></th></tr></thead>
           <tbody id="teams-tbody">${buildTeamRows(teams)}</tbody>
         </table>
       </div>
@@ -512,7 +514,8 @@ async function toggleTeamMembers(teamId) {
   container.innerHTML = '<span style="color:var(--text-muted)">Loading…</span>';
 
   try {
-    const members = await api.getTeamMembers(teamId);
+    const [members, users] = await Promise.all([api.getTeamMembers(teamId), api.getUsers()]);
+    const userMap = Object.fromEntries((users || []).map(u => [u.id, u]));
     const user = getCurrentUser();
     const isCoordinator = user?.role === 'coordinator';
     if (!(members || []).length) {
@@ -521,12 +524,16 @@ async function toggleTeamMembers(teamId) {
     }
     container.innerHTML = `
       <div style="display:flex;flex-wrap:wrap;gap:8px">
-        ${members.map(m => `
-          <span class="chip">
-            ${m.full_name || m.user_id?.slice(0,8) || '?'}
-            <span style="color:var(--text-muted);margin-left:4px;font-size:11px">(${m.role || ''})</span>
+        ${members.map(m => {
+          const u = userMap[m.user_id];
+          const name = u?.full_name || m.user_id?.slice(0, 8) || '?';
+          const roleLabel = m.role_in_team || u?.role || '';
+          return `<span class="chip">
+            ${name}
+            ${roleLabel ? `<span style="color:var(--text-muted);margin-left:4px;font-size:11px">(${roleLabel})</span>` : ''}
             ${isCoordinator ? `<button class="chip-remove" onclick="removeFromTeam('${teamId}','${m.user_id || m.id}')">×</button>` : ''}
-          </span>`).join('')}
+          </span>`;
+        }).join('')}
       </div>`;
   } catch (err) {
     container.innerHTML = `<span style="color:var(--text-danger)">${err.message}</span>`;
