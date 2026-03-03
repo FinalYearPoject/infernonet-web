@@ -73,7 +73,8 @@ async function renderHotDashboard() {
   const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
   incidents.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
 
-  const incidentCards = incidents.map(inc => {
+  function buildIncidentCards(incidentList) {
+    return (incidentList || []).map(inc => {
     const alerts = alertsByIncident[inc.id] || [];
     const channels = channelsByIncident[inc.id] || [];
     const equipment = equipmentByIncident[inc.id] || [];
@@ -135,17 +136,63 @@ async function renderHotDashboard() {
         </div>
       </article>
     `;
-  }).join('');
+    }).join('');
+  }
+
+  let hideInactive = true;
+  const activeIncidents = () => incidents.filter(i => i.status !== 'resolved');
+  const inactiveIncidents = () => incidents.filter(i => i.status === 'resolved');
+
+  function renderCards() {
+    const active = activeIncidents();
+    const inactive = hideInactive ? [] : inactiveIncidents();
+    const activeContainer = document.getElementById('dashboard-cards-active');
+    const inactiveSection = document.getElementById('dashboard-inactive-section');
+    const inactiveContainer = document.getElementById('dashboard-cards-inactive');
+    const sub = document.getElementById('dashboard-subtitle');
+    if (activeContainer) activeContainer.innerHTML = buildIncidentCards(active);
+    if (inactiveSection) {
+      if (inactive.length) {
+        inactiveSection.style.display = '';
+        if (inactiveContainer) inactiveContainer.innerHTML = buildIncidentCards(inactive);
+      } else {
+        inactiveSection.style.display = 'none';
+      }
+    }
+    const total = active.length + inactive.length;
+    if (sub) sub.textContent = `${total} incident${total !== 1 ? 's' : ''} you're assigned to · Alerts, channels & equipment`;
+  }
+
+  const active = activeIncidents();
+  const inactive = inactiveIncidents();
+  const initialInactiveHtml = inactive.length ? buildIncidentCards(inactive) : '';
+  const initialInactiveDisplay = hideInactive ? 'none' : '';
 
   mount(`
     <div class="page">
       <div class="page-header">
         <div>
           <div class="page-title">🔥 Hot Dashboard</div>
-          <div class="page-subtitle">${incidents.length} incident${incidents.length !== 1 ? 's' : ''} you’re assigned to · Alerts, channels & equipment</div>
+          <div class="page-subtitle" id="dashboard-subtitle">${incidents.length} incident${incidents.length !== 1 ? 's' : ''} you're assigned to · Alerts, channels & equipment</div>
         </div>
       </div>
-      ${incidentCards}
+      <div class="filter-bar" style="align-items:center;margin-bottom:16px">
+        <label class="checkbox-label" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="dashboard-hide-inactive" checked />
+          <span>Hide inactive</span>
+        </label>
+        <span style="font-size:12px;color:var(--text-muted)">Inactive = Resolved</span>
+      </div>
+      <div id="dashboard-cards-active">${buildIncidentCards(active)}</div>
+      <div id="dashboard-inactive-section" class="dashboard-inactive-section" style="display:${initialInactiveDisplay}">
+        <div class="section-heading" style="margin-top:24px"><span>Inactive</span></div>
+        <div id="dashboard-cards-inactive">${initialInactiveHtml}</div>
+      </div>
     </div>
   `);
+
+  document.getElementById('dashboard-hide-inactive').addEventListener('change', () => {
+    hideInactive = document.getElementById('dashboard-hide-inactive').checked;
+    renderCards();
+  });
 }

@@ -709,6 +709,19 @@ select.form-control option { background: var(--bg-elevated); }
 }
 .filter-bar .form-control { max-width: 220px; }
 
+/* Section row in tables (e.g. Pending / Active) */
+tr.section-row td {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+tbody:first-of-type tr.section-row td { border-top: none; }
+
 /* ===== Map containers — prevent Leaflet overflow ===== */
 #map-container {
   position: relative;
@@ -832,3 +845,6 @@ select.form-control option { background: var(--bg-elevated); }
   gap: 6px;
 }
 .dashboard-equipment-name { font-weight: 500; }
+
+.dashboard-inactive-section { margin-top: 8px; }
+.dashboard-inactive-section .dashboard-incident-card { opacity: 0.92; }

@@ -16,27 +16,61 @@ async function renderIncidents() {
   const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
   incidents.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
 
-  const rows = incidents.length
-    ? incidents.map(inc => `
-        <tr>
-          <td>
-            <span class="td-link" onclick="window.location.hash='#/incidents/${inc.id}'">${inc.title}</span>
-          </td>
-          <td>${badge(inc.severity)}</td>
-          <td>${badge(inc.status)}</td>
-          <td style="color:var(--text-secondary)">${inc.address || '—'}</td>
-          <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(inc.created_at)}</td>
-          <td>
-            <button class="btn btn-ghost btn-sm" onclick="window.location.hash='#/incidents/${inc.id}'">View</button>
-          </td>
-        </tr>`)
-      .join('')
-    : `<tr><td colspan="6"><div class="empty-state"><span class="empty-icon">🔥</span>No incidents yet</div></td></tr>`;
-
   const user = getCurrentUser();
   const isCivilian = user?.role === 'civilian';
   const isCoordinator = user?.role === 'coordinator';
   const showNewButton = isCoordinator || isCivilian;
+
+  function rowHtml(inc) {
+    return `
+      <tr>
+        <td><span class="td-link" onclick="window.location.hash='#/incidents/${inc.id}'">${inc.title}</span></td>
+        <td>${badge(inc.severity)}</td>
+        <td>${badge(inc.status)}</td>
+        <td style="color:var(--text-secondary)">${inc.address || '—'}</td>
+        <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(inc.created_at)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="window.location.hash='#/incidents/${inc.id}'">View</button></td>
+      </tr>`;
+  }
+
+  function applyHideInactive() {
+    const hideInactive = document.getElementById('hide-inactive').checked;
+    const pending = incidents.filter(i => i.status === 'pending');
+    const active = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved');
+    const inactive = incidents.filter(i => i.status === 'resolved');
+    const pendingTbody = document.getElementById('incidents-pending-tbody');
+    const activeTbody = document.getElementById('incidents-active-tbody');
+    const inactiveTbody = document.getElementById('incidents-inactive-tbody');
+    if (pendingTbody) {
+      pendingTbody.innerHTML = pending.length
+        ? `<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>${pending.map(rowHtml).join('')}`
+        : '';
+    }
+    if (activeTbody) {
+      activeTbody.innerHTML = active.length
+        ? `<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>${active.map(rowHtml).join('')}`
+        : `<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>`;
+    }
+    if (inactiveTbody) {
+      if (hideInactive || !inactive.length) {
+        inactiveTbody.innerHTML = '';
+        inactiveTbody.style.display = 'none';
+      } else {
+        inactiveTbody.style.display = '';
+        inactiveTbody.innerHTML = `<tr class="section-row"><td colspan="6"><strong>Inactive</strong></td></tr>${inactive.map(rowHtml).join('')}`;
+      }
+    }
+  }
+
+  const pending = incidents.filter(i => i.status === 'pending');
+  const activeDefault = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved');
+  const inactiveDefault = incidents.filter(i => i.status === 'resolved');
+  const pendingRows = pending.length ? `<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>${pending.map(rowHtml).join('')}` : '';
+  const activeRows = activeDefault.length
+    ? `<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>${activeDefault.map(rowHtml).join('')}`
+    : `<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>`;
+  const inactiveRows = '';
+  const inactiveDisplay = 'none';
 
   mount(`
     <div class="page">
@@ -48,22 +82,12 @@ async function renderIncidents() {
         ${showNewButton ? `<button class="btn btn-primary" id="btn-new-incident">${isCivilian ? '+ Report Incident' : '+ New Incident'}</button>` : ''}
       </div>
 
-      <div class="filter-bar">
-        <select class="form-control" id="filter-severity">
-          <option value="">All severities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <select class="form-control" id="filter-status">
-          <option value="">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="reported">Reported</option>
-          <option value="active">Active</option>
-          <option value="contained">Contained</option>
-          <option value="resolved">Resolved</option>
-        </select>
+      <div class="filter-bar" style="align-items:center">
+        <label class="checkbox-label" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="hide-inactive" checked />
+          <span>Hide inactive</span>
+        </label>
+        <span style="font-size:12px;color:var(--text-muted)">Inactive = Resolved</span>
       </div>
 
       <div class="table-wrap">
@@ -78,33 +102,15 @@ async function renderIncidents() {
               <th></th>
             </tr>
           </thead>
-          <tbody id="incidents-tbody">${rows}</tbody>
+          <tbody id="incidents-pending-tbody">${pendingRows}</tbody>
+          <tbody id="incidents-active-tbody">${activeRows}</tbody>
+          <tbody id="incidents-inactive-tbody" style="display:${inactiveDisplay}">${inactiveRows}</tbody>
         </table>
       </div>
     </div>
   `);
 
-  /* Client-side filter */
-  function applyFilter() {
-    const sev = document.getElementById('filter-severity').value;
-    const sta = document.getElementById('filter-status').value;
-    const filtered = incidents.filter(i =>
-      (!sev || i.severity === sev) && (!sta || i.status === sta)
-    );
-    document.getElementById('incidents-tbody').innerHTML = filtered.length
-      ? filtered.map(inc => `
-          <tr>
-            <td><span class="td-link" onclick="window.location.hash='#/incidents/${inc.id}'">${inc.title}</span></td>
-            <td>${badge(inc.severity)}</td>
-            <td>${badge(inc.status)}</td>
-            <td style="color:var(--text-secondary)">${inc.address || '—'}</td>
-            <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(inc.created_at)}</td>
-            <td><button class="btn btn-ghost btn-sm" onclick="window.location.hash='#/incidents/${inc.id}'">View</button></td>
-          </tr>`).join('')
-      : `<tr><td colspan="6"><div class="empty-state"><span class="empty-icon">🔍</span>No matching incidents</div></td></tr>`;
-  }
-  document.getElementById('filter-severity').addEventListener('change', applyFilter);
-  document.getElementById('filter-status').addEventListener('change', applyFilter);
+  document.getElementById('hide-inactive').addEventListener('change', applyHideInactive);
 
   /* Create incident modal — coordinator or civilian (report) */
   document.getElementById('btn-new-incident')?.addEventListener('click', () => {
