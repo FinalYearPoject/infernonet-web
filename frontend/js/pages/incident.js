@@ -229,7 +229,6 @@ async function renderIncidentDetail(id) {
       <!-- Timeline -->
       <div class="section-heading">
         <span>Timeline (${(updates || []).length})</span>
-        ${isStaff ? `<button class="btn btn-secondary btn-sm" id="btn-add-update">+ Add Update</button>` : ''}
       </div>
       <div id="timeline-container" style="padding:4px 0">
         ${buildTimeline(updates)}
@@ -263,6 +262,7 @@ async function renderIncidentDetail(id) {
   /* Edit status — coordinator or firefighter */
   if (isStaff) {
     document.getElementById('btn-edit-incident').addEventListener('click', () => {
+      const currentStatus = incident.status;
       openModal('Edit Incident Status', `
         <form id="edit-incident-form">
           <div class="form-group">
@@ -284,6 +284,10 @@ async function renderIncidentDetail(id) {
               <option value="critical" ${incident.severity === 'critical' ? 'selected' : ''}>Critical</option>
             </select>
           </div>
+          <div class="form-group">
+            <label class="form-label">Comment (appears in Timeline)</label>
+            <textarea class="form-control" id="edit-inc-comment" rows="3" placeholder="Optional note about this status change…"></textarea>
+          </div>
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
             <button type="submit" class="btn btn-primary" id="edit-inc-btn">Save</button>
@@ -293,12 +297,21 @@ async function renderIncidentDetail(id) {
       document.getElementById('edit-incident-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('edit-inc-btn');
+        const newStatus = document.getElementById('edit-inc-status').value;
+        const comment = document.getElementById('edit-inc-comment').value.trim();
         btn.disabled = true; btn.textContent = 'Saving…';
         try {
           await api.updateIncident(id, {
-            status:   document.getElementById('edit-inc-status').value,
+            status:   newStatus,
             severity: document.getElementById('edit-inc-severity').value,
           });
+          if (comment) {
+            await api.createIncidentUpdate(id, {
+              content: comment,
+              status_before: currentStatus,
+              status_after: newStatus,
+            });
+          }
           closeModal();
           toast('Incident updated', 'success');
           renderIncidentDetail(id);
@@ -468,64 +481,6 @@ async function renderIncidentDetail(id) {
   });
   }
 
-  /* Add timeline update — coordinator or firefighter only */
-  if (isStaff) {
-    document.getElementById('btn-add-update').addEventListener('click', () => {
-    openModal('Add Timeline Update', `
-      <form id="add-update-form">
-        <div class="form-group">
-          <label class="form-label">Content *</label>
-          <textarea class="form-control" id="upd-content" rows="4" placeholder="Describe what happened…" required></textarea>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Status Before</label>
-            <select class="form-control" id="upd-status-before">
-              <option value="">— None —</option>
-              <option value="reported">Reported</option>
-              <option value="active">Active</option>
-              <option value="contained">Contained</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status After</label>
-            <select class="form-control" id="upd-status-after">
-              <option value="">— None —</option>
-              <option value="reported">Reported</option>
-              <option value="active">Active</option>
-              <option value="contained">Contained</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="add-upd-btn">Add Update</button>
-        </div>
-      </form>
-    `);
-    document.getElementById('add-update-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('add-upd-btn');
-      btn.disabled = true; btn.textContent = 'Adding…';
-      try {
-        await api.createIncidentUpdate(id, {
-          content:       document.getElementById('upd-content').value.trim(),
-          user_id:       user?.id || null,
-          status_before: document.getElementById('upd-status-before').value || null,
-          status_after:  document.getElementById('upd-status-after').value || null,
-        });
-        closeModal();
-        toast('Update added', 'success');
-        renderIncidentDetail(id);
-      } catch (err) {
-        toast(err.message, 'error');
-        btn.disabled = false; btn.textContent = 'Add Update';
-      }
-    });
-  });
-  }
 }
 
 /* ===== Toggle Team Members ===== */
