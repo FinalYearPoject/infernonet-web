@@ -87,12 +87,6 @@ async function renderChannel(channelId) {
         ${currentUser?.role !== 'civilian' ? `<button class="btn btn-secondary btn-sm" id="btn-add-member">+ Add Member</button>` : ''}
       </div>
 
-      <!-- Members -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-title"><span class="card-icon">👥</span> Members (${(members || []).length})</div>
-        <div class="chip-list" id="member-chips">${buildMemberChips(members)}</div>
-      </div>
-
       <!-- Messages -->
       <div class="card">
         <div class="card-title"><span class="card-icon">💬</span> Messages</div>
