@@ -14,6 +14,11 @@ async function renderOrganizations() {
   const user = getCurrentUser();
   const canEdit = user?.role === 'coordinator';
 
+  function formatOrgType(t) {
+    if (!t) return '—';
+    return String(t).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   function buildRows(list) {
     if (!list.length) {
       return `<tr><td colspan="6"><div class="empty-state" style="padding:20px"><span class="empty-icon">🏢</span>No organizations yet</div></td></tr>`;
@@ -21,7 +26,7 @@ async function renderOrganizations() {
     return list.map(o => `
       <tr>
         <td style="font-weight:500">${o.name}</td>
-        <td>${badge(o.type)}</td>
+        <td><span class="badge badge-${o.type}">${formatOrgType(o.type)}</span></td>
         <td>${o.contact_phone || '—'}</td>
         <td style="color:var(--text-secondary)">${o.address || '—'}</td>
         <td style="color:var(--text-muted);font-size:13px">${fmtDateShort(o.created_at)}</td>
