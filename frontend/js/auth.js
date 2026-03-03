@@ -46,6 +46,10 @@ function updateHeader() {
     document.querySelectorAll('.nav-link[data-staff-only]').forEach(link => {
       link.style.display = user.role === 'civilian' ? 'none' : '';
     });
+    /* Hot Dashboard only for firefighters */
+    document.querySelectorAll('.nav-link[data-firefighter-only]').forEach(link => {
+      link.style.display = user.role === 'firefighter' ? '' : 'none';
+    });
   } else {
     header.style.display = 'none';
     userInfo.textContent = '';

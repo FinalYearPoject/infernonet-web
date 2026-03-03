@@ -2,6 +2,7 @@
 
 const routes = [
   { pattern: /^\/login$/,              render: renderLogin },
+  { pattern: /^\/dashboard$/,          render: renderHotDashboard },
   { pattern: /^\/incidents$/,          render: renderIncidents },
   { pattern: /^\/incidents\/(.+)$/,    render: (m) => renderIncidentDetail(m[1]) },
   { pattern: /^\/users$/,              render: renderUsers },
@@ -22,6 +23,11 @@ function resolveHash() {
   /* civilians: only Incidents and Live Map */
   const user = getCurrentUser();
   if (user?.role === 'civilian' && ['/users', '/organizations', '/equipment'].includes(hash)) {
+    window.location.hash = '#/incidents';
+    return;
+  }
+  /* Hot Dashboard only for firefighters */
+  if (hash === '/dashboard' && user?.role !== 'firefighter') {
     window.location.hash = '#/incidents';
     return;
   }

@@ -2,13 +2,22 @@ from app.core.database import get_connection, return_connection
 from psycopg2.extras import RealDictCursor
 
 
-def list_teams(organization_id: str | None = None, incident_id: str | None = None, limit: int = 100) -> list[dict]:
+def list_teams(
+    organization_id: str | None = None,
+    incident_id: str | None = None,
+    member_id: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
     conn = None
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         conditions = []
         params = []
+        from_clause = "FROM teams"
+        if member_id:
+            from_clause = "FROM teams INNER JOIN team_members ON team_members.team_id = teams.id AND team_members.user_id = %s"
+            params.append(member_id)
         if organization_id:
             conditions.append("organization_id = %s")
             params.append(organization_id)
@@ -18,7 +27,8 @@ def list_teams(organization_id: str | None = None, incident_id: str | None = Non
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         params.append(limit)
         cur.execute(
-            f"""SELECT id, name, organization_id, incident_id, created_at, updated_at FROM teams {where} ORDER BY name LIMIT %s""",
+            f"""SELECT DISTINCT teams.id, teams.name, teams.organization_id, teams.incident_id, teams.created_at, teams.updated_at
+            {from_clause} {where} ORDER BY teams.name LIMIT %s""",
             params,
         )
         return [dict(r) for r in cur.fetchall()]

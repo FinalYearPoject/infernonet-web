@@ -7,8 +7,20 @@ router = APIRouter()
 
 
 @router.get("/teams", summary="List teams")
-def list_teams(organization_id: str | None = None, incident_id: str | None = None, limit: int = 100):
-    return {"teams": svc.list_teams(organization_id=organization_id, incident_id=incident_id, limit=limit)}
+def list_teams(
+    organization_id: str | None = None,
+    incident_id: str | None = None,
+    member_id: str | None = None,
+    limit: int = 100,
+):
+    return {
+        "teams": svc.list_teams(
+            organization_id=organization_id,
+            incident_id=incident_id,
+            member_id=member_id,
+            limit=limit,
+        )
+    }
 
 
 @router.get("/teams/{team_id}", response_model=TeamResponse, summary="Get team by ID")
