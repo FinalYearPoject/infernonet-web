@@ -44,6 +44,40 @@ async function renderEquipment() {
       </tr>`).join('');
   }
 
+  let eqPage = 1;
+  let pageSize = PAGE_SIZE;
+  function getFilteredEquipment() {
+    const sta = document.getElementById('filter-eq-status')?.value ?? '';
+    const org = document.getElementById('filter-eq-org')?.value ?? '';
+    return equipment.filter(e =>
+      (!sta || e.status === sta) && (!org || e.organization_id === org)
+    );
+  }
+  function renderEquipmentPage() {
+    const filtered = getFilteredEquipment();
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    eqPage = Math.min(Math.max(1, eqPage), totalPages);
+    const slice = sliceForPage(filtered, eqPage, pageSize);
+    document.getElementById('equipment-tbody').innerHTML = buildRows(slice);
+    const barEl = document.getElementById('equipment-pagination');
+    if (barEl) {
+      barEl.outerHTML = paginationBar('equipment-pagination', eqPage, totalPages, totalItems, pageSize);
+      document.getElementById('equipment-pagination')?.addEventListener('click', (e) => {
+        const p = e.target.dataset?.page;
+        if (p) { eqPage = Number(p); renderEquipmentPage(); }
+      });
+      document.querySelector('#equipment-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+        pageSize = Number(e.target.value);
+        eqPage = 1;
+        renderEquipmentPage();
+      });
+    }
+  }
+
+  const initialEqSlice = sliceForPage(equipment, 1, PAGE_SIZE);
+  const totalPagesEq = Math.max(1, Math.ceil(equipment.length / PAGE_SIZE));
+
   mount(`
     <div class="page">
       <div class="page-header">
@@ -81,22 +115,28 @@ async function renderEquipment() {
               <th></th>
             </tr>
           </thead>
-          <tbody id="equipment-tbody">${buildRows(equipment)}</tbody>
+          <tbody id="equipment-tbody">${buildRows(initialEqSlice)}</tbody>
         </table>
       </div>
+      ${equipment.length ? paginationBar('equipment-pagination', 1, totalPagesEq, equipment.length, PAGE_SIZE) : ''}
     </div>
   `);
 
   function applyFilter() {
-    const sta = document.getElementById('filter-eq-status').value;
-    const org = document.getElementById('filter-eq-org').value;
-    const filtered = equipment.filter(e =>
-      (!sta || e.status === sta) && (!org || e.organization_id === org)
-    );
-    document.getElementById('equipment-tbody').innerHTML = buildRows(filtered);
+    eqPage = 1;
+    renderEquipmentPage();
   }
   document.getElementById('filter-eq-status').addEventListener('change', applyFilter);
   document.getElementById('filter-eq-org').addEventListener('change', applyFilter);
+  document.getElementById('equipment-pagination')?.addEventListener('click', (e) => {
+    const p = e.target.dataset?.page;
+    if (p) { eqPage = Number(p); renderEquipmentPage(); }
+  });
+  document.querySelector('#equipment-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+    pageSize = Number(e.target.value);
+    eqPage = 1;
+    renderEquipmentPage();
+  });
 
   if (canEdit) {
     document.getElementById('btn-new-equipment').addEventListener('click', () => {

@@ -100,6 +100,37 @@ function badge(value, prefix = '') {
   return `<span class="badge ${cls}">${value}</span>`;
 }
 
+/* ===== Pagination ===== */
+const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+
+function paginationBar(id, currentPage, totalPages, totalItems, pageSize = PAGE_SIZE) {
+  if (!totalItems) return '';
+  const prev = currentPage <= 1 ? 0 : currentPage - 1;
+  const next = currentPage >= totalPages ? 0 : currentPage + 1;
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+  const sizeOptions = PAGE_SIZE_OPTIONS.map(n => `<option value="${n}" ${n === pageSize ? 'selected' : ''}>${n}</option>`).join('');
+  return `
+    <div class="pagination-bar" id="${id}" data-current="${currentPage}" data-total-pages="${totalPages}" data-page-size="${pageSize}">
+      <span class="pagination-info">${start}–${end} of ${totalItems}</span>
+      <div class="pagination-controls">
+        <label class="pagination-per-page">
+          <span>Per page</span>
+          <select class="form-control form-control-sm pagination-pagesize" data-pagination-id="${id}">${sizeOptions}</select>
+        </label>
+        <button type="button" class="btn btn-ghost btn-sm pagination-btn" data-page="${prev}" ${prev ? '' : 'disabled'}>Previous</button>
+        <span class="pagination-pages">Page ${currentPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-ghost btn-sm pagination-btn" data-page="${next}" ${next ? '' : 'disabled'}>Next</button>
+      </div>
+    </div>`;
+}
+
+function sliceForPage(list, page, pageSize = PAGE_SIZE) {
+  const start = (page - 1) * pageSize;
+  return list.slice(start, start + pageSize);
+}
+
 /* ===== Boot ===== */
 window.addEventListener('hashchange', resolveHash);
 window.addEventListener('DOMContentLoaded', resolveHash);

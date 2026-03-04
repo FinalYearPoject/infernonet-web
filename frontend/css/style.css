@@ -709,6 +709,35 @@ select.form-control option { background: var(--bg-elevated); }
 }
 .filter-bar .form-control { max-width: 220px; }
 
+/* ===== Pagination ===== */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.pagination-info { font-size: 13px; color: var(--text-muted); }
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pagination-pages { font-size: 13px; color: var(--text-secondary); }
+.pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pagination-per-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pagination-per-page select { width: auto; min-width: 56px; padding: 4px 8px; }
+.form-control-sm { height: 28px; font-size: 13px; }
+
 /* Section row in tables (e.g. Pending / Active) */
 tr.section-row td {
   background: var(--surface-alt);

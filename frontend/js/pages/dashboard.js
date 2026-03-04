@@ -140,33 +140,49 @@ async function renderHotDashboard() {
   }
 
   let hideInactive = true;
+  let dashboardPage = 1;
+  let pageSize = PAGE_SIZE;
   const activeIncidents = () => incidents.filter(i => i.status !== 'resolved');
   const inactiveIncidents = () => incidents.filter(i => i.status === 'resolved');
 
-  function renderCards() {
+  function getVisibleList() {
     const active = activeIncidents();
     const inactive = hideInactive ? [] : inactiveIncidents();
+    return [...active, ...inactive];
+  }
+
+  function renderCards() {
+    const visibleList = getVisibleList();
+    const totalItems = visibleList.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    dashboardPage = Math.min(Math.max(1, dashboardPage), totalPages);
+    const slice = sliceForPage(visibleList, dashboardPage, pageSize);
     const activeContainer = document.getElementById('dashboard-cards-active');
     const inactiveSection = document.getElementById('dashboard-inactive-section');
     const inactiveContainer = document.getElementById('dashboard-cards-inactive');
     const sub = document.getElementById('dashboard-subtitle');
-    if (activeContainer) activeContainer.innerHTML = buildIncidentCards(active);
-    if (inactiveSection) {
-      if (inactive.length) {
-        inactiveSection.style.display = '';
-        if (inactiveContainer) inactiveContainer.innerHTML = buildIncidentCards(inactive);
-      } else {
-        inactiveSection.style.display = 'none';
-      }
+    const paginationEl = document.getElementById('dashboard-pagination');
+    if (activeContainer) activeContainer.innerHTML = buildIncidentCards(slice);
+    if (inactiveSection) inactiveSection.style.display = 'none';
+    if (inactiveContainer) inactiveContainer.innerHTML = '';
+    if (sub) sub.textContent = `${totalItems} incident${totalItems !== 1 ? 's' : ''} you're assigned to · Alerts, channels & equipment`;
+    if (paginationEl) {
+      paginationEl.outerHTML = paginationBar('dashboard-pagination', dashboardPage, totalPages, totalItems, pageSize);
+      document.getElementById('dashboard-pagination')?.addEventListener('click', (e) => {
+        const p = e.target.dataset?.page;
+        if (p) { dashboardPage = Number(p); renderCards(); }
+      });
+      document.querySelector('#dashboard-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+        pageSize = Number(e.target.value);
+        dashboardPage = 1;
+        renderCards();
+      });
     }
-    const total = active.length + inactive.length;
-    if (sub) sub.textContent = `${total} incident${total !== 1 ? 's' : ''} you're assigned to · Alerts, channels & equipment`;
   }
 
-  const active = activeIncidents();
-  const inactive = inactiveIncidents();
-  const initialInactiveHtml = inactive.length ? buildIncidentCards(inactive) : '';
-  const initialInactiveDisplay = hideInactive ? 'none' : '';
+  const visibleInitial = getVisibleList();
+  const initialSlice = sliceForPage(visibleInitial, 1, pageSize);
+  const totalPagesDashboard = Math.max(1, Math.ceil(visibleInitial.length / pageSize));
 
   mount(`
     <div class="page">
@@ -183,16 +199,27 @@ async function renderHotDashboard() {
         </label>
         <span style="font-size:12px;color:var(--text-muted)">Inactive = Resolved</span>
       </div>
-      <div id="dashboard-cards-active">${buildIncidentCards(active)}</div>
-      <div id="dashboard-inactive-section" class="dashboard-inactive-section" style="display:${initialInactiveDisplay}">
+      <div id="dashboard-cards-active">${buildIncidentCards(initialSlice)}</div>
+      <div id="dashboard-inactive-section" class="dashboard-inactive-section" style="display:none">
         <div class="section-heading" style="margin-top:24px"><span>Inactive</span></div>
-        <div id="dashboard-cards-inactive">${initialInactiveHtml}</div>
+        <div id="dashboard-cards-inactive"></div>
       </div>
+      ${visibleInitial.length ? paginationBar('dashboard-pagination', 1, totalPagesDashboard, visibleInitial.length, pageSize) : ''}
     </div>
   `);
 
   document.getElementById('dashboard-hide-inactive').addEventListener('change', () => {
     hideInactive = document.getElementById('dashboard-hide-inactive').checked;
+    dashboardPage = 1;
+    renderCards();
+  });
+  document.getElementById('dashboard-pagination')?.addEventListener('click', (e) => {
+    const p = e.target.dataset?.page;
+    if (p) { dashboardPage = Number(p); renderCards(); }
+  });
+  document.querySelector('#dashboard-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+    pageSize = Number(e.target.value);
+    dashboardPage = 1;
     renderCards();
   });
 }

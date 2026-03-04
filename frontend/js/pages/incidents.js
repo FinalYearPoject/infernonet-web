@@ -33,44 +33,79 @@ async function renderIncidents() {
       </tr>`;
   }
 
-  function applyHideInactive() {
-    const hideInactive = document.getElementById('hide-inactive').checked;
+  function getFullRows() {
+    const hideInactive = document.getElementById('hide-inactive')?.checked !== false;
     const pending = incidents.filter(i => i.status === 'pending');
     const active = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved');
-    const inactive = incidents.filter(i => i.status === 'resolved');
-    const pendingTbody = document.getElementById('incidents-pending-tbody');
-    const activeTbody = document.getElementById('incidents-active-tbody');
-    const inactiveTbody = document.getElementById('incidents-inactive-tbody');
-    if (pendingTbody) {
-      pendingTbody.innerHTML = pending.length
-        ? `<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>${pending.map(rowHtml).join('')}`
-        : '';
+    const inactive = hideInactive ? [] : incidents.filter(i => i.status === 'resolved');
+    const rows = [];
+    if (pending.length) {
+      rows.push('<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>');
+      pending.forEach(inc => rows.push(rowHtml(inc)));
     }
-    if (activeTbody) {
-      activeTbody.innerHTML = active.length
-        ? `<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>${active.map(rowHtml).join('')}`
-        : `<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>`;
+    if (active.length) {
+      rows.push('<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>');
+      active.forEach(inc => rows.push(rowHtml(inc)));
+    } else if (!pending.length) {
+      rows.push('<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>');
     }
-    if (inactiveTbody) {
-      if (hideInactive || !inactive.length) {
-        inactiveTbody.innerHTML = '';
-        inactiveTbody.style.display = 'none';
-      } else {
-        inactiveTbody.style.display = '';
-        inactiveTbody.innerHTML = `<tr class="section-row"><td colspan="6"><strong>Inactive</strong></td></tr>${inactive.map(rowHtml).join('')}`;
-      }
+    if (inactive.length) {
+      rows.push('<tr class="section-row"><td colspan="6"><strong>Inactive</strong></td></tr>');
+      inactive.forEach(inc => rows.push(rowHtml(inc)));
+    }
+    return rows;
+  }
+
+  let currentPage = 1;
+  let pageSize = PAGE_SIZE;
+
+  function renderPage() {
+    const fullRows = getFullRows();
+    const totalItems = fullRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const slice = sliceForPage(fullRows, currentPage, pageSize);
+    const tbody = document.getElementById('incidents-tbody');
+    const barEl = document.getElementById('incidents-pagination');
+    if (tbody) tbody.innerHTML = slice.join('');
+    if (barEl) {
+      barEl.outerHTML = paginationBar('incidents-pagination', currentPage, totalPages, totalItems, pageSize);
+      document.getElementById('incidents-pagination')?.addEventListener('click', (e) => {
+        const p = e.target.dataset?.page;
+        if (p) { currentPage = Number(p); renderPage(); }
+      });
+      document.querySelector('#incidents-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+        pageSize = Number(e.target.value);
+        currentPage = 1;
+        renderPage();
+      });
     }
   }
 
-  const pending = incidents.filter(i => i.status === 'pending');
-  const activeDefault = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved');
-  const inactiveDefault = incidents.filter(i => i.status === 'resolved');
-  const pendingRows = pending.length ? `<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>${pending.map(rowHtml).join('')}` : '';
-  const activeRows = activeDefault.length
-    ? `<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>${activeDefault.map(rowHtml).join('')}`
-    : `<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>`;
-  const inactiveRows = '';
-  const inactiveDisplay = 'none';
+  function applyHideInactive() {
+    currentPage = 1;
+    renderPage();
+  }
+
+  const fullRowsInitial = (() => {
+    const pending = incidents.filter(i => i.status === 'pending');
+    const active = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved');
+    const rows = [];
+    if (pending.length) {
+      rows.push('<tr class="section-row"><td colspan="6"><strong>Pending</strong></td></tr>');
+      pending.forEach(inc => rows.push(rowHtml(inc)));
+    }
+    if (active.length) {
+      rows.push('<tr class="section-row"><td colspan="6"><strong>Active</strong></td></tr>');
+      active.forEach(inc => rows.push(rowHtml(inc)));
+    } else if (!pending.length) {
+      rows.push('<tr><td colspan="6"><div class="empty-state" style="padding:16px"><span class="empty-icon">🔥</span>No active incidents</div></td></tr>');
+    }
+    return rows;
+  })();
+  const totalItemsInitial = fullRowsInitial.length;
+  const totalPagesInitial = Math.max(1, Math.ceil(totalItemsInitial / PAGE_SIZE));
+  const initialRows = sliceForPage(fullRowsInitial, 1, PAGE_SIZE);
 
   mount(`
     <div class="page">
@@ -102,15 +137,23 @@ async function renderIncidents() {
               <th></th>
             </tr>
           </thead>
-          <tbody id="incidents-pending-tbody">${pendingRows}</tbody>
-          <tbody id="incidents-active-tbody">${activeRows}</tbody>
-          <tbody id="incidents-inactive-tbody" style="display:${inactiveDisplay}">${inactiveRows}</tbody>
+          <tbody id="incidents-tbody">${initialRows.join('')}</tbody>
         </table>
       </div>
+      ${paginationBar('incidents-pagination', 1, totalPagesInitial, totalItemsInitial, PAGE_SIZE)}
     </div>
   `);
 
   document.getElementById('hide-inactive').addEventListener('change', applyHideInactive);
+  document.getElementById('incidents-pagination')?.addEventListener('click', (e) => {
+    const p = e.target.dataset?.page;
+    if (p) { currentPage = Number(p); renderPage(); }
+  });
+  document.querySelector('#incidents-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+    pageSize = Number(e.target.value);
+    currentPage = 1;
+    renderPage();
+  });
 
   /* Create incident modal — coordinator or civilian (report) */
   document.getElementById('btn-new-incident')?.addEventListener('click', () => {

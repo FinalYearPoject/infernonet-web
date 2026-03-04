@@ -42,6 +42,42 @@ async function renderUsers() {
       </tr>`).join('');
   }
 
+  let usersPage = 1;
+  let pageSize = PAGE_SIZE;
+  function getFilteredUsers() {
+    const q = document.getElementById('user-search')?.value?.toLowerCase() ?? '';
+    const role = document.getElementById('filter-role')?.value ?? '';
+    return users.filter(u =>
+      (!role || u.role === role) &&
+      (!q || (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
+    );
+  }
+  function renderUsersPage() {
+    const filtered = getFilteredUsers();
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    usersPage = Math.min(Math.max(1, usersPage), totalPages);
+    const slice = sliceForPage(filtered, usersPage, pageSize);
+    const tbody = document.getElementById('users-tbody');
+    const barEl = document.getElementById('users-pagination');
+    if (tbody) tbody.innerHTML = buildRows(slice);
+    if (barEl) {
+      barEl.outerHTML = paginationBar('users-pagination', usersPage, totalPages, totalItems, pageSize);
+      document.getElementById('users-pagination')?.addEventListener('click', (e) => {
+        const p = e.target.dataset?.page;
+        if (p) { usersPage = Number(p); renderUsersPage(); }
+      });
+      document.querySelector('#users-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+        pageSize = Number(e.target.value);
+        usersPage = 1;
+        renderUsersPage();
+      });
+    }
+  }
+
+  const initialSlice = sliceForPage(users, 1, PAGE_SIZE);
+  const totalPagesUsers = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+
   mount(`
     <div class="page">
       <div class="page-header">
@@ -75,24 +111,29 @@ async function renderUsers() {
               <th></th>
             </tr>
           </thead>
-          <tbody id="users-tbody">${buildRows(users)}</tbody>
+          <tbody id="users-tbody">${buildRows(initialSlice)}</tbody>
         </table>
       </div>
+      ${paginationBar('users-pagination', 1, totalPagesUsers, users.length)}
     </div>
   `);
 
-  /* Client-side filter */
+  /* Client-side filter + pagination */
   function applyFilter() {
-    const q    = document.getElementById('user-search').value.toLowerCase();
-    const role = document.getElementById('filter-role').value;
-    const filtered = users.filter(u =>
-      (!role || u.role === role) &&
-      (!q || u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-    );
-    document.getElementById('users-tbody').innerHTML = buildRows(filtered);
+    usersPage = 1;
+    renderUsersPage();
   }
   document.getElementById('user-search').addEventListener('input', applyFilter);
   document.getElementById('filter-role').addEventListener('change', applyFilter);
+  document.getElementById('users-pagination')?.addEventListener('click', (e) => {
+    const p = e.target.dataset?.page;
+    if (p) { usersPage = Number(p); renderUsersPage(); }
+  });
+  document.querySelector('#users-pagination .pagination-pagesize')?.addEventListener('change', (e) => {
+    pageSize = Number(e.target.value);
+    usersPage = 1;
+    renderUsersPage();
+  });
 
   /* Create user modal — coordinator only */
   document.getElementById('btn-new-user')?.addEventListener('click', () => openCreateUserModal(orgs, () => renderUsers()));

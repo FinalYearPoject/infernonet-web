@@ -39,6 +39,11 @@ async function renderOrganizations() {
       </tr>`).join('');
   }
 
+  let orgsPage = 1;
+  let pageSize = PAGE_SIZE;
+  const totalPagesOrgs = Math.max(1, Math.ceil(orgs.length / pageSize));
+  const initialOrgsSlice = sliceForPage(orgs, 1, pageSize);
+
   mount(`
     <div class="page">
       <div class="page-header">
@@ -61,11 +66,36 @@ async function renderOrganizations() {
               <th></th>
             </tr>
           </thead>
-          <tbody id="orgs-tbody">${buildRows(orgs)}</tbody>
+          <tbody id="orgs-tbody">${buildRows(initialOrgsSlice)}</tbody>
         </table>
       </div>
+      ${orgs.length ? paginationBar('orgs-pagination', 1, totalPagesOrgs, orgs.length, pageSize) : ''}
     </div>
   `);
+
+  function onOrgsPageClick(e) {
+    const p = e.target.dataset?.page;
+    if (!p) return;
+    orgsPage = Number(p);
+    const slice = sliceForPage(orgs, orgsPage, pageSize);
+    document.getElementById('orgs-tbody').innerHTML = buildRows(slice);
+    const totalPages = Math.max(1, Math.ceil(orgs.length / pageSize));
+    document.getElementById('orgs-pagination').outerHTML = paginationBar('orgs-pagination', orgsPage, totalPages, orgs.length, pageSize);
+    document.getElementById('orgs-pagination')?.addEventListener('click', onOrgsPageClick);
+    document.querySelector('#orgs-pagination .pagination-pagesize')?.addEventListener('change', onOrgsPageSizeChange);
+  }
+  function onOrgsPageSizeChange(e) {
+    pageSize = Number(e.target.value);
+    orgsPage = 1;
+    const slice = sliceForPage(orgs, 1, pageSize);
+    document.getElementById('orgs-tbody').innerHTML = buildRows(slice);
+    const totalPages = Math.max(1, Math.ceil(orgs.length / pageSize));
+    document.getElementById('orgs-pagination').outerHTML = paginationBar('orgs-pagination', 1, totalPages, orgs.length, pageSize);
+    document.getElementById('orgs-pagination')?.addEventListener('click', onOrgsPageClick);
+    document.querySelector('#orgs-pagination .pagination-pagesize')?.addEventListener('change', onOrgsPageSizeChange);
+  }
+  document.getElementById('orgs-pagination')?.addEventListener('click', onOrgsPageClick);
+  document.querySelector('#orgs-pagination .pagination-pagesize')?.addEventListener('change', onOrgsPageSizeChange);
 
   if (canEdit) {
     document.getElementById('btn-new-org').addEventListener('click', () => openCreateOrgModal(() => renderOrganizations()));
