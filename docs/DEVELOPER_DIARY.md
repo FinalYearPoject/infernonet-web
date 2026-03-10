@@ -399,3 +399,474 @@ Send messages       → uses channel_id + user_id + coordinator_id
 - Registering with a duplicate email → `409 Conflict`
 - Fetching a non-existent user → `404 Not Found`
 - Creating a channel with both `incident_id` and `team_id` → `422 Unprocessable Entity`
+
+---
+
+## Entry 8 — Role Model, UX Decisions and Rationale
+
+This entry documents the final state of the application after the latest iteration, focusing on:
+- **Why** each feature exists,
+- **Which role** (civilian, firefighter, coordinator) can use it,
+- **What data structures and backend concepts** support it.
+
+The description is written in the style of an oral exam / thesis defense: *“why did you design it this way?”*.
+
+### 8.1 Roles and access model
+
+There are three roles, stored as an enum-like string in the `users.role` column (`'civilian' | 'firefighter' | 'coordinator'`). Role information is carried in:
+- PostgreSQL (`users.role` with a `CHECK` constraint),
+- backend Pydantic schemas,
+- frontend `localStorage` (a compact `infernonet_user` JSON used by the router and UI).
+
+**Civilian**
+- Can log in and:
+  - See the **Incidents** list.
+  - See **Incident detail** (status, timeline, map).
+  - See **Live Map** with incidents.
+  - **Report a new incident** via the “Report Incident” button.
+- Cannot:
+  - See `Users`, `Organizations`, `Equipment`, `Hot Dashboard`.
+  - Edit incidents, add alerts, manage channels, manage teams, or equipment.
+- Rationale:
+  - Civilians are “sources of signals” (reports) and consumers of public information (map, incident statuses), but not operators of the system.
+  - This keeps the UI and mental model extremely simple for non‑technical, possibly stressed users.
+
+**Firefighter**
+- Can:
+  - Access the **Hot Dashboard** (only firefighters see this entry in the navbar).
+  - See **Incidents**, **Incident detail**, **Live Map**.
+  - Join **teams** and **channels** when assigned by a coordinator.
+  - Add **timeline comments** when changing incident status (through their actions, depending on policy).
+- Cannot:
+  - Create new organizations, teams, users.
+  - Create or delete incidents themselves (this is left to coordinators in this version).
+- Rationale:
+  - Firefighters need **quick situational awareness**: which incidents am I on, what alerts were sent, which radio/chat channels to follow, which vehicles/drones are attached.
+  - They should not be distracted by administrative screens (user management, organizations, etc.), but still need full clarity on the operational picture.
+
+**Coordinator**
+- Can:
+  - Everything a firefighter can, plus:
+  - Manage **Users** (create, edit, delete).
+  - Manage **Organizations**.
+  - Manage **Equipment** (vehicles, drones, sensors etc.).
+  - Create and update **Incidents**, assign teams, update status/severity.
+  - Send **Alerts** for an incident.
+  - Manage **Channels** and their members.
+- Rationale:
+  - Coordinator is essentially the “control room”: they administer the system, assign resources, and perform broadcast communication. Therefore they have access to all CRUD endpoints on organizations, users, equipment, teams, alerts and incidents.
+
+The role logic is enforced:
+- On the **frontend router**:
+  - Civilians are redirected away from `/users`, `/organizations`, `/equipment` and `/dashboard`.
+  - The navigation bar hides inappropriate links (e.g. civilians do not even see “Users”).
+  - Hot Dashboard is visible only for firefighters (`data-firefighter-only` attribute).
+- On the **backend**:
+  - Sensitive endpoints (e.g. incident updates) use `get_current_user` and raise `403` when role is not sufficient.
+
+### 8.2 Organizations and why they are visible
+
+**Question from client:** “Which organizations did you include and why?”
+
+In the current schema, the `organizations` table models entities such as:
+- Fire departments (`FIRE_DEPARTMENT`),
+- Central emergency services (`EMERGENCY_SERVICES`),
+- Government bodies (`GOVERNMENT`),
+- NGOs / volunteer groups (`NGO`),
+- “Other” types for anything not covered.
+
+Each `user` is linked to exactly one `organization_id`.  
+Each `team` also belongs to an organization.  
+Each `equipment` record is owned by an organization.
+
+**Why coordinators see all organizations:**
+- To answer practical questions during an emergency:
+  - “Which department owns this truck/drone?”
+  - “Which NGO has personnel on this incident?”
+  - “Whom can I contact if I need more resources in this region?”
+- To make it easy to:
+  - Onboard new firefighters under the correct department.
+  - Create teams tied to their host organization.
+  - Track equipment usage per organization (for later reporting / accountability).
+
+On the **frontend**, the Organizations page shows:
+- Name,
+- Type (formatted from enum `EMERGENCY_SERVICES` → “Emergency services” etc.),
+- Phone,
+- Address,
+- Created date.
+
+The „type“ is stored as a small string (e.g. `'fire_department'`), and rendered via a helper:
+- `formatOrgType` replaces underscores with spaces and capitalizes words,
+- Type is also mapped to CSS classes (badges) for quick visual distinction.
+
+Civilian and firefighter **do not** see this page at all — only coordinators do. This keeps sensitive organizational structure and PII restricted to staff.
+
+### 8.3 Users: why show all users and their basic activity
+
+**Question from client:** “Why do we see all users and their activity?”
+
+The **Users** page is the main tool for coordinators to manage human resources:
+
+- It lists:
+  - full name + email,
+  - role,
+  - organization,
+  - phone,
+  - **status badge** (Active / Inactive),
+  - created date.
+- It offers filters:
+  - search by name/email,
+  - filter by role (firefighter, coordinator, civilian).
+
+The “activity” in this context is not detailed logs but **whether the user is active or inactive** (`users.is_active`). This allows coordinators to:
+- Disable accounts that should no longer be used without deleting historical data,
+- Quickly see if a user is supposed to be available for team assignment.
+
+Structurally:
+- `users` is a first-class table with foreign key `organization_id`.
+- The frontend maintains a cached `orgMap` and uses it to render human‑readable org names.
+- Pagination is applied so that a long list of users remains manageable (`PAGE_SIZE` + per‑page selector).
+
+Firefighters and civilians **never** see this list. It’s purely an administrative view.
+
+### 8.4 Incidents and timeline: why the design is like this
+
+Incidents are the central object of the system. The design goals were:
+
+- Give **civilians** a simple way to report an incident (title, description, map click for coordinates, optional address).
+- Give **coordinators** and **firefighters** a rich detail view with:
+  - status,
+  - severity,
+  - geolocation and map,
+  - teams assigned,
+  - equipment assigned,
+  - channels,
+  - alerts,
+  - timeline.
+
+#### Status and severity
+
+`incidents.status` uses a small enum: `pending`, `reported`, `active`, `contained`, `resolved`.
+- **Pending** is important because civilians can submit reports that have not yet been validated by staff.
+- The **Incidents list** splits rows into logical sections:
+  - `Pending`,
+  - `Active`,
+  - `Inactive` (resolved).
+- A `Hide inactive` checkbox (default ON) hides resolved incidents from the “Active” view, but they can be brought back when the checkbox is cleared.
+
+This is implemented entirely on the frontend with helper functions that group incidents and inject section header rows (`<tr class="section-row">`), but the underlying data is a simple array of incident JSON objects received from the backend.
+
+#### Timeline and why updates are tied to status changes
+
+There is a dedicated table `incident_updates`:
+- `incident_id`,
+- `user_id`,
+- `content` (human‑written comment),
+- `status_before`,
+- `status_after`,
+- `created_at`.
+
+Initially the UI allowed manual timeline updates via a separate “Add Update” button. However, that made it hard to trace *why* and *when* a status changed versus when someone just wrote a note.
+
+In the final design:
+- We **removed** standalone “Add Update”.
+- Timeline entries are created **only when status is edited** via the “Edit Incident Status” modal.
+- The modal has:
+  - new status,
+  - new severity,
+  - optional **Comment (appears in Timeline)**.
+- On submit:
+  1. Backend `PATCH /incidents/{id}` updates `status` and `severity`.
+  2. If there is a comment, the frontend then calls `POST /incidents/{id}/updates` with:
+     - `content` = comment,
+     - `status_before` = old status,
+     - `status_after` = new status.
+
+**Why this is better:**
+- Every timeline item now documents a **concrete change in incident state**.
+- The combination of `status_before` and `status_after` is used in the UI to show a badge sequence (e.g. `ACTIVE → CONTAINED`) next to the comment.
+- The data structure directly supports answering “who changed the status, when, and what was the operator’s reasoning?”.
+
+### 8.5 Teams, channels and why they’re linked to incidents
+
+**Teams** (`teams`, `team_members`) and **channels** (`channels`, `channel_members`, `messages`) are the coordination backbone.
+
+- When a coordinator creates a team and assigns it to an incident (`teams.incident_id`), they can then:
+  - Add firefighters to that team (via `team_members`).
+  - Automatically or manually create channels tied to the same incident.
+- A **team membership** implicitly means:
+  - The firefighter is “assigned” to that incident.
+  - Their incident will appear on **Hot Dashboard** (backend endpoint `/teams?member_id=...` is used to find teams where the current user is a member; their `incident_id` list then drives the dashboard queries).
+
+Channels:
+- Are scoped with `incident_id` and/or `team_id` (enforced via the `channel_scope` constraint).
+- Civilians see only **public** channels, and even тогда только в ограниченном объёме (e.g. they cannot manage members).
+- Coordinators can create both public and private channels.
+
+**Rationale:**
+- Real incidents are always handled by **groups**, not individual people. Out‑of‑band chats (WhatsApp, phone) are hard to audit and coordinate, so the system provides a structured channel per incident/team.
+- Linking teams to incidents, and channels to teams/incidents, allows us to derive:
+  - For firefighter: “show me only channels relevant to incidents I am on”.
+  - For coordinator: “which teams and channels exist for this incident; do I need to add more?”.
+
+Data‑structure wise, this is classic **many‑to‑many**:
+- `team_members(team_id, user_id, role_in_team)`,
+- `channel_members(channel_id, user_id)`.
+
+### 8.6 Equipment: why attach it to incidents and organizations
+
+Equipment has these key fields:
+- `organization_id` — owner,
+- `incident_id` — if currently assigned to an incident,
+- `status` — `available`, `in_use`, `maintenance`, `unavailable`,
+- `latitude`, `longitude` — approximate position,
+- `metadata JSONB` — type-specific data.
+
+**Why coordinators see Equipment:**
+- They are responsible for allocating scarce resources:
+  - fire trucks,
+  - drones,
+  - pumps,
+  - sensor networks.
+- The list shows:
+  - name / type,
+  - status,
+  - organization,
+  - linked incident,
+  - current location,
+  - creation date.
+
+On the **Incidents** page:
+- Under each incident, we show which equipment is assigned to it (chip list in the Hot Dashboard and a dedicated table in Incident detail).
+
+On the **Hot Dashboard**:
+- For each assigned incident, the firefighter sees all equipment attached to that incident:
+  - name,
+  - status badge (`IN USE`, `AVAILABLE` etc.),
+  - owning organization.
+
+Structurally this gives us:
+- A 1‑to‑many relation `organizations → equipment`.
+- A 1‑to‑many relation `incidents → equipment`.
+- Ability to query “all equipment on this incident” (`equipment.incident_id = :id`) without additional join tables.
+
+### 8.7 Hot Dashboard: why firefighters have a separate view
+
+The **Hot Dashboard** is a firefighter‑only page that aggregates:
+- Incidents where the firefighter is a team member,
+- Alerts, channels, and equipment for those incidents,
+- A direct **Route (Maps)** button for navigation.
+
+**Why a separate dashboard instead of reusing the Incidents list:**
+- Firefighter needs a **very focused** view:
+  - Only incidents they are assigned to.
+  - No administrative tables or global filters.
+  - Quick “open channel”, “see equipment”, “see alerts” actions.
+- The underlying data is derived from:
+  - `team_members` (filter by `user_id`),
+  - `teams.incident_id` (incidents list),
+  - `alerts`, `channels`, `equipment` filtered by each incident.
+
+The dashboard also has:
+- `Hide inactive` checkbox (hides resolved incidents by default),
+- **Pagination + per-page selector** to avoid huge scroll lists if a firefighter is attached to many incidents (for example, in large wildfires or when reviewing history).
+
+The **Route (Maps)** button:
+- Generates a standard Google Maps URL:
+  - `https://www.google.com/maps/dir/?api=1&destination=<lat>,<lng>`,
+- Opens in a new tab.
+- Rationale:
+  - Offloading actual routing and navigation to Google Maps (or any other navigator) is pragmatic: the app does not need to implement routing algorithms; it just provides a correct destination point.
+
+### 8.8 Frontend structure and UI decisions
+
+The frontend is a small but carefully structured SPA:
+
+- **Routing**:
+  - Implemented in `router.js` using hash‑based routes (`#/incidents`, `#/incidents/:id`, `#/users`, `#/equipment`, `#/organizations`, `#/dashboard`, `#/map`).
+  - `resolveHash` contains the auth guard and role redirects.
+
+- **Pages**:
+  - Each main view lives in its own `frontend/js/pages/*.js` file:
+    - `incidents.js`, `incident.js`, `users.js`, `equipment.js`, `organizations.js`, `dashboard.js`, `map.js`, `channels.js`.
+  - Each page:
+    - Fetches data through the `api` client,
+    - Renders HTML into `#app` via the `mount()` helper,
+    - Attaches DOM event listeners (buttons, filters, pagination).
+
+- **Pagination and filtering**:
+  - Implemented purely on the client side using arrays in memory.
+  - Central helpers in `router.js` avoid code duplication.
+  - Every big table page (Incidents, Users, Organizations, Equipment) now has:
+    - Pagination controls (Prev/Next, “X–Y of Z”, page count),
+    - Per-page selector,
+    - In some cases additional filters (status, role, search query, organization).
+
+**Why vanilla JS and not React/Vue/Angular?**
+- The main goal of the project is to demonstrate **backend/API design and role-based domain modeling**.
+- A custom, lightweight SPA with ~a few hundred lines of JS per page is:
+  - Easy to reason about during an exam (no framework lifecycle to explain),
+  - Transparent: the examiner can literally read the whole control flow,
+  - Enough to show good UX patterns (modals, filter bars, responsive tables, badges, chips, maps).
+
+---
+
+This entry should give a supervisor a clear view of **what** the system does for each actor, **why** the features exist, and **how** they are implemented (both in database schema and in frontend behavior).
+
+---
+
+## Entry 9 — Client-driven Iterations (What Changed and Why)
+
+This entry addresses additional client questions and clarifies **why certain features were added, removed, or constrained** in the final version.
+
+### 9.1 Why Live Map shows incidents (not live user locations)
+
+The initial concept included *live user location mapping* (table `user_locations` and related endpoints). During iteration we intentionally **removed** the live user location layer and redefined **Live Map** as:
+
+- “A map of **incidents** (their coordinates, status and severity)”
+- not “a map of **people**”.
+
+**Rationale:**
+- **Privacy and safety:** tracking people in real time is sensitive (especially civilians). Even for staff, it creates additional compliance requirements and risk.
+- **Operational value:** for decision-making, the most stable reference point is the **incident location** and its state (reported/active/contained/resolved). User locations can be noisy and ambiguous.
+- **Simpler correctness:** incident coordinates are part of the incident record and are validated at creation time; user locations require continuous updates, retention logic, and more complex UI behavior.
+
+**Data model impact:**
+- Live Map now uses the existing `incidents` structure: `latitude`, `longitude`, `status`, `severity`.
+- This removed the need for the `user_locations` table and API routes in the final workflow.
+
+### 9.2 Civilian workflow: why “Pending” exists and what the civilian can do
+
+**Client request:** “What functions does the civilian have and why did you choose that functionality?”
+
+Civilian is treated as a *reporting actor* with minimal, safe functionality:
+
+**Civilian can:**
+- View **Incidents** list and **Incident detail**.
+- Use **Live Map** to understand what is happening geographically.
+- **Report Incident** by providing:
+  - title and description,
+  - coordinates by clicking on an embedded map (to reduce address ambiguity),
+  - optional address text.
+
+**Civilian cannot:**
+- Create alerts or channels,
+- Manage teams or equipment,
+- Manage users or organizations,
+- Post operational updates in the timeline.
+
+**Why “Pending”:**
+- Civilian reports are valuable but can be **unverified** (duplicates, false alarms, incomplete data).
+- Therefore civilian-created incidents start as `status = 'pending'`.
+- Staff (coordinator/firefighter, per policy) can review and “promote” an incident by setting status to `reported/active/...`.
+
+**UX rationale:**
+- The Incidents list visually separates `Pending` from staff-verified states.
+- Civilians see a limited incident dataset: approved incidents + their own pending reports (so the reporter can check if their request is acknowledged).
+
+**Data structures:**
+- `incidents.status` adds a new enum value `pending`.
+- Simple **role-based filtering** is applied on backend list/get operations (civilians do not get full staff view).
+
+### 9.3 Coordinator capabilities: what they can do and why
+
+**Client request:** “What can a coordinator do, and why does the coordinator need organizations management?”
+
+Coordinator is the *control room* role. They can:
+
+- **Incidents**
+  - create incident records (internal reports),
+  - update incident status and severity,
+  - (in the current policy) delete incidents when appropriate.
+- **Teams**
+  - create teams under an organization,
+  - assign teams to incidents,
+  - add/remove team members.
+- **Alerts**
+  - broadcast alerts tied to an incident (public safety messaging).
+- **Channels**
+  - create channels, set public/private visibility,
+  - add/remove channel members,
+  - use channels as operational communications.
+- **Equipment**
+  - add and update resources,
+  - assign equipment to incidents,
+  - track status and approximate location.
+- **Users / Organizations**
+  - onboard staff and civilians,
+  - tie users to correct organizations,
+  - keep organizational directory and contact data.
+
+**Why manage organizations:**
+- Organizations provide the “ownership” backbone:
+  - who owns equipment,
+  - which department a user belongs to,
+  - which organization hosts a team.
+- This is critical for realistic emergency operations: resource allocation and accountability always depend on which department/agency controls assets.
+
+**Example organizations (demo dataset):**
+- “Central Fire Department” (type `FIRE_DEPARTMENT`)
+- “Emergency Services” (type `EMERGENCY_SERVICES`)
+- “Coordinators” / “NGO” examples as auxiliary actors
+
+The system supports these as **types**, and the actual list can be extended by coordinators.
+
+### 9.4 Firefighter capabilities: what they can do and why
+
+**Client request:** “What can a firefighter do and why did you decide it that way?”
+
+Firefighters are optimized for **fast consumption of operational context**:
+
+**Firefighter can:**
+- Use **Hot Dashboard** to instantly see:
+  - incidents they are assigned to (derived from team membership),
+  - alerts/channels/equipment for those incidents,
+  - a **Google Maps route** button to the incident coordinates.
+- Use **Incident detail** to:
+  - read the timeline,
+  - see teams and assigned equipment,
+  - open incident channels.
+- Participate in channels and read updates.
+
+**Why not give firefighters admin pages:**
+- During active operations, UI should be focused on “what do I need right now?”.
+- Administrative actions (user/org CRUD) have higher risk of accidental changes and are not part of on-ground responsibilities.
+
+**Assignment model:**
+- Firefighter assignment is represented by the join table `team_members`.
+- A team has `incident_id`, which allows us to derive “incidents assigned to this firefighter” without creating an extra assignment table.
+
+### 9.5 Why we removed standalone “Add Timeline Update”
+
+We intentionally removed direct “Add Update” to avoid a timeline becoming a free-form chat log.
+
+**New rule:** timeline entries are created through the **Edit Incident Status** flow with an optional comment.
+
+**Why this is important for a defense explanation:**
+- Timeline becomes an auditable record of **state transitions** and their justification.
+- A timeline row captures:
+  - `status_before`,
+  - `status_after`,
+  - operator comment (`content`),
+  - timestamp (`created_at`),
+  - and (optionally) `user_id`.
+
+This is a clean and explainable structure that answers: *“what changed, who changed it, and why”*.
+
+### 9.6 Why pagination and “per page” selector were added
+
+Several pages can grow quickly (Incidents, Users, Organizations, Equipment, Hot Dashboard). We added:
+- Pagination controls (Prev/Next + “X–Y of Z”),
+- A “Per page” selector (5/10/25/50),
+- Default page size = 10.
+
+**Rationale:**
+- Keeps pages usable on laptops and tablets,
+- Prevents long tables from becoming cognitively overwhelming,
+- Maintains performance by rendering only a slice of rows/cards.
+
+**Implementation detail (data structure):**
+- Pagination is implemented in the frontend using array slicing (`sliceForPage(list, page, pageSize)`).
+- This is a classic *list windowing* approach that is simple, deterministic, and easy to explain academically.
+
